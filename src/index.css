@@ -1,0 +1,120 @@
+@import "tailwindcss";
+
+:root {
+  color-scheme: light;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  text-rendering: optimizeLegibility;
+  font-family: Inter, ui-rounded, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background:
+    radial-gradient(circle at top left, rgba(255,255,255,0.95), rgba(224,242,254,0.9) 24%, rgba(238,242,255,0.92) 46%, rgba(253,242,248,0.92) 74%, rgba(255,255,255,1) 100%);
+  color: #0f172a;
+}
+
+body::before,
+body::after {
+  content: "";
+  position: fixed;
+  inset: auto;
+  pointer-events: none;
+  z-index: -1;
+  filter: blur(30px);
+}
+
+body::before {
+  top: 90px;
+  left: -120px;
+  width: 340px;
+  height: 340px;
+  border-radius: 999px;
+  background: rgba(251, 191, 36, 0.22);
+}
+
+body::after {
+  top: 240px;
+  right: -120px;
+  width: 420px;
+  height: 420px;
+  border-radius: 999px;
+  background: rgba(129, 140, 248, 0.18);
+}
+
+button,
+[role="button"] {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+button,
+a {
+  transition: transform .2s ease, box-shadow .2s ease, background-color .2s ease, color .2s ease, border-color .2s ease, opacity .2s ease;
+}
+
+button:hover,
+a:hover {
+  transform: translateY(-1px);
+}
+
+button:active,
+a:active {
+  transform: translateY(0);
+}
+
+::selection {
+  background: rgba(99, 102, 241, 0.18);
+  color: #312e81;
+}
+
+.premium-app {
+  position: relative;
+  isolation: isolate;
+  overflow: clip;
+}
+
+.premium-app::before,
+.premium-app::after {
+  content: "";
+  position: absolute;
+  pointer-events: none;
+  z-index: -1;
+}
+
+.premium-app::before {
+  top: 220px;
+  left: 4%;
+  width: 260px;
+  height: 260px;
+  border-radius: 999px;
+  background: radial-gradient(circle at center, rgba(244, 114, 182, 0.18), transparent 70%);
+}
+
+.premium-app::after {
+  top: 860px;
+  right: 5%;
+  width: 300px;
+  height: 300px;
+  border-radius: 999px;
+  background: radial-gradient(circle at center, rgba(34, 211, 238, 0.16), transparent 70%);
+}
+
+@media (max-width: 768px) {
+  button,
+  [role="button"] {
+    min-height: 48px;
+  }
+
+  body::before,
+  body::after {
+    filter: blur(42px);
+  }
+}

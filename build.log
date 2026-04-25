@@ -1,0 +1,14 @@
+V16 build validation
+- package: escola-divertida-v16-supabase-operacional
+- build target: Netlify standard Vite build
+- typecheck: OK
+- function handlers: OK
+- npm audit: 0 vulnerabilities after install
+- build output:
+  - dist/index.html
+  - dist/assets/index-DbO3Evh3.css
+  - dist/assets/index-DNa_Yknc.js
+- notes:
+  - removed vite-plugin-singlefile to favor a more standard and reliable Netlify deploy
+  - dynamic content admin now supports remote load + full sync publish semantics
+  - Supabase schema now includes catalog_publications and updated_at triggers

@@ -1,0 +1,1 @@
+Este pacote foi corrigido para usar o registry público do npm (registry.npmjs.org) no package-lock.json.
