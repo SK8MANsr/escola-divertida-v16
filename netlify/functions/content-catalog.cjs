@@ -125,12 +125,11 @@ exports.handler = async (event) => {
   if (event.httpMethod !== 'GET') return json(405, { ok: false, error: 'Método não suportado.' });
 
   const [packsResult, phasesResult, eventsResult, tracksResult, latestPublicationResult] = await Promise.all([
-  requestSupabase('content_packs?select=id,title,description,min_age,max_age,sort_order,metadata,updated_at&is_active=eq.true&order=sort_order.asc'),
-  requestSupabase('content_pack_phases?select=pack_id,phase_id,sort_order&order=sort_order.asc'),
-  requestSupabase('seasonal_events?select=id,title,subtitle,emoji,world_key,target_completions,reward_label,reward_stars,starts_at,ends_at,metadata,updated_at&is_active=eq.true&order=created_at.asc'),
-  requestSupabase('parent_weekly_tracks?select=id,title,age_min,age_max,world_key,is_active,days,metadata,updated_at&is_active=eq.true&order=created_at.asc'),
-  fetchLatestPublication(),
-]);
+    requestSupabase('content_packs?select=id,title,description,min_age,max_age,sort_order,metadata,updated_at&is_active=eq.true&order=sort_order.asc'),
+    requestSupabase('content_pack_phases?select=pack_id,phase_id,sort_order&order=sort_order.asc'),
+    requestSupabase('seasonal_events?select=id,title,subtitle,emoji,world_key,target_completions,reward_label,reward_stars,starts_at,ends_at,metadata,updated_at&is_active=eq.true&order=created_at.asc'),
+    requestSupabase('parent_weekly_tracks?select=id,title,age_min,age_max,world_key,is_active,days,metadata,updated_at&is_active=eq.true&order=created_at.asc'),
+  ]);
 
   const failed = [packsResult, phasesResult, eventsResult, tracksResult].find((item) => !item.ok);
   if (failed) return json(500, { ok: false, error: failed.error || 'Falha ao carregar catálogo.' });
@@ -138,9 +137,7 @@ exports.handler = async (event) => {
   const packs = (packsResult.data || []).map((row) => mapPack(row, phasesResult.data || []));
   const seasonalEvents = (eventsResult.data || []).filter(isEventCurrentlyActive).map(mapEvent);
   const parentWeeklyTracks = (tracksResult.data || []).map(mapTrack);
-  const latestPublication = latestPublicationResult && latestPublicationResult.ok && Array.isArray(latestPublicationResult.data)
-  ? latestPublicationResult.data[0]
-  : null;
+  const latestPublication = latestPublicationResult.ok && Array.isArray(latestPublicationResult.data) ? latestPublicationResult.data[0] : null;
   const updatedAtCandidates = [
     ...(packsResult.data || []).map((row) => row.updated_at).filter(Boolean),
     ...(eventsResult.data || []).map((row) => row.updated_at).filter(Boolean),
