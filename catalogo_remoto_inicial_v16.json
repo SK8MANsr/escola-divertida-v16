@@ -1,0 +1,103 @@
+{
+  "manifestVersion": 2,
+  "contentPacks": [
+    {
+      "id": "pack-primeiros-passos",
+      "title": "Primeiros Passos",
+      "ageLabel": "4–5 anos",
+      "recommendedAges": [4, 5],
+      "themeLabel": "Adaptação inicial",
+      "description": "Coleção suave para começo de jornada, com foco em reconhecimento visual, memória curta, cores e encaixe simples.",
+      "accentClass": "from-pink-300 to-orange-200",
+      "mascotTip": "Ideal para começar sem sobrecarga: regras curtas, vitórias rápidas e muita confiança para a criança.",
+      "phaseIds": ["shape-1", "shape-2", "shape-3", "shape-4", "colors-1", "colors-2", "colors-3", "colors-4", "memory-1", "memory-2", "alphabet-1", "alphabet-2"],
+      "featureBullets": ["coordenação motora fina", "toques simples", "feedback rápido", "entrada suave no app"]
+    },
+    {
+      "id": "pack-letras-palavras",
+      "title": "Letras e Palavras",
+      "ageLabel": "5–7 anos",
+      "recommendedAges": [5, 6, 7],
+      "themeLabel": "Alfabetização",
+      "description": "Trilha focada em reconhecimento de letras iniciais, palavras do cotidiano e leitura visual gradual.",
+      "accentClass": "from-yellow-300 to-amber-200",
+      "mascotTip": "Boa para momentos de estudo leve, com poucas frustrações e muitas respostas rápidas.",
+      "phaseIds": ["alphabet-1", "alphabet-2", "alphabet-3", "alphabet-4", "alphabet-5", "alphabet-6", "alphabet-7", "alphabet-8", "alphabet-9", "alphabet-10", "alphabet-11", "alphabet-12"],
+      "featureBullets": ["letra inicial", "vocabulário infantil", "resposta por escolha", "continuidade alfabetizadora"]
+    },
+    {
+      "id": "pack-aventura-espacial",
+      "title": "Aventura Espacial",
+      "ageLabel": "5–7 anos",
+      "recommendedAges": [5, 6, 7],
+      "themeLabel": "Espaço e descoberta",
+      "description": "Mistura espaço, rotas, contagem e puzzles para crianças que gostam de universo, foguetes e exploração.",
+      "accentClass": "from-indigo-400 to-sky-300",
+      "mascotTip": "Uma boa coleção para sustentar engajamento longo com um tema muito forte e fantasioso.",
+      "phaseIds": ["memory-4", "alphabet-6", "math-4", "math-8", "maze-3", "maze-8", "puzzle-2", "puzzle-8", "colors-8", "shape-7"],
+      "featureBullets": ["tema espacial", "missões com fantasia", "raciocínio leve", "puzzles temáticos"]
+    }
+  ],
+  "seasonalEvents": [
+    {
+      "id": "event-stars",
+      "title": "Temporada das Estrelas",
+      "subtitle": "Complete fases de Memória para acender o céu da aventura.",
+      "emoji": "🌟",
+      "world": "memory",
+      "targetCompletions": 4,
+      "rewardLabel": "Selo Estrelas do Bosque",
+      "rewardStars": 4,
+      "monthRange": "evento temático",
+      "palette": "from-indigo-500 to-fuchsia-500"
+    },
+    {
+      "id": "event-letters",
+      "title": "Festival das Letras",
+      "subtitle": "Brilhe na Cidade das Letras com rodadas extras de alfabetização.",
+      "emoji": "🔤",
+      "world": "alphabet",
+      "targetCompletions": 4,
+      "rewardLabel": "Selo Voz das Letras",
+      "rewardStars": 4,
+      "monthRange": "evento temático",
+      "palette": "from-orange-500 to-amber-500"
+    }
+  ],
+  "parentWeeklyTracks": [
+    {
+      "id": "weekly-track-primeiros-passos",
+      "title": "Semana dos Primeiros Passos",
+      "description": "Roteiro leve para crianças menores, com foco em adaptação, confiança e brincadeiras curtas.",
+      "ageMin": 4,
+      "ageMax": 5,
+      "world": "shape",
+      "isActive": true,
+      "accentClass": "from-pink-300 to-orange-200",
+      "days": [
+        {"day": "Seg", "title": "Formas amigas", "screen": "Jogar 1 ou 2 fases de Encaixe por 10 minutos.", "offline": "Procurem círculos, quadrados e triângulos pela casa.", "goal": "Fortalecer coordenação e reconhecimento de formas."},
+        {"day": "Ter", "title": "Cores que encantam", "screen": "Separar objetos por cor no Jardim das Cores.", "offline": "Montar montinhos de brinquedos ou roupas por cor.", "goal": "Estimular classificação visual e vocabulário."},
+        {"day": "Qua", "title": "Memória curtinha", "screen": "Jogar uma fase rápida do Bosque da Memória.", "offline": "Esconder dois pares de objetos iguais e pedir para encontrar.", "goal": "Exercitar atenção e memória de trabalho."},
+        {"day": "Qui", "title": "Letras do cotidiano", "screen": "Brincar 1 fase da Cidade das Letras.", "offline": "Falar palavras que comecem com a letra do nome da criança.", "goal": "Ampliar linguagem sem pressão."},
+        {"day": "Sex", "title": "Mistura divertida", "screen": "Escolher o jogo favorito da semana e repetir com confiança.", "offline": "Desenhar a brincadeira favorita vivida no app.", "goal": "Consolidar vínculo positivo com o aprendizado."}
+      ]
+    },
+    {
+      "id": "weekly-track-descobertas",
+      "title": "Semana das Descobertas",
+      "description": "Trilha equilibrada para 5 a 6 anos, misturando letras, números e aventura leve.",
+      "ageMin": 5,
+      "ageMax": 6,
+      "world": "alphabet",
+      "isActive": true,
+      "accentClass": "from-amber-300 to-yellow-200",
+      "days": [
+        {"day": "Seg", "title": "Letras em ação", "screen": "Jogar 2 fases da Cidade das Letras.", "offline": "Procurar palavras em embalagens ou livros infantis.", "goal": "Trabalhar consciência fonológica e vocabulário."},
+        {"day": "Ter", "title": "Contagem com alegria", "screen": "Jogar 1 ou 2 fases do Vale dos Números.", "offline": "Contar frutas, passos ou brinquedos.", "goal": "Fixar contagem e raciocínio inicial."},
+        {"day": "Qua", "title": "Rota do tesouro", "screen": "Explorar um labirinto curtinho.", "offline": "Criar uma trilha com almofadas no chão.", "goal": "Estimular orientação espacial."},
+        {"day": "Qui", "title": "Puzzle calmo", "screen": "Montar uma cena no Ateliê dos Puzzles.", "offline": "Recortar uma figura simples em 4 partes para remontar.", "goal": "Exercitar organização visual e persistência."},
+        {"day": "Sex", "title": "Pack da semana", "screen": "Abrir um pack recomendado e concluir a próxima fase livre.", "offline": "Conversar sobre qual jogo foi mais divertido e por quê.", "goal": "Criar autonomia com rotina saudável."}
+      ]
+    }
+  ]
+}
