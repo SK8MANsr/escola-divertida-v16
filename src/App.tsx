@@ -1,29 +1,19 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { ElementType } from 'react';
 import {
-  ArrowLeft,
-  ArrowRight,
   AudioLines,
   BookOpen,
-  Brain,
   CalendarDays,
   ChevronLeft,
   ChevronRight,
-  Crown,
   Gamepad2,
   Gift,
   Home,
   Layers3,
   Map,
   Menu,
-  Palette,
   Play,
-  Rocket,
   ShieldCheck,
-  Sparkles,
-  Star,
-  Target,
-  Trophy,
   UserRound,
   Users,
   WandSparkles,
@@ -48,7 +38,6 @@ import {
   parentWeeklyTracks as fallbackTracks,
   phaseMap,
   profileAccentPalette,
-  puzzleScenes,
   rewardMilestones,
   seasonalEvents as fallbackEvents,
   shapeLibrary,
@@ -1271,14 +1260,14 @@ type ParentsPanelProps = {
 };
 
 function ParentsPanel({ profile, tracks, infra }: ParentsPanelProps) {
-  const suggestedAgeTrack = ageTracks.find((track) => profile.age >= track.ageMin && profile.age <= track.ageMax) ?? ageTracks[0];
+  const suggestedAgeTrack = ageTracks.find((track) => track.age.startsWith(String(profile.age))) ?? ageTracks[0];
   return (
     <div className="parents-grid">
       <article className="parent-dashboard-card">
         <SectionHeading eyebrow="Resumo rápido" title="O que vale abrir hoje" icon={<Users size={20} />} />
         <div className="parent-soft-card is-strong">
-          <strong>{suggestedAgeTrack.title}</strong>
-          <p>{suggestedAgeTrack.description}</p>
+          <strong>{suggestedAgeTrack.age}</strong>
+          <p>{suggestedAgeTrack.content}</p>
         </div>
         <div className="parent-mini-grid">
           <div className="parent-mini-card"><strong>{tracks.length}</strong><span>trilhas sugeridas</span></div>
