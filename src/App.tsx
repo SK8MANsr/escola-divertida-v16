@@ -96,8 +96,6 @@ const MEMORY_IMAGE_POOLS: Record<keyof typeof memoryThemePools, MemoryCardAsset[
     { label: 'Urso', image: '/memory-cards/urso.webp' },
   ],
   fruits: [
-    { label: 'Refrigerante', image: '/memory-cards/refrigerante.webp' },
-    { label: 'Guarda-sol', image: '/memory-cards/guarda_sol.webp' },
     { label: 'Sol', image: '/memory-cards/sol.webp' },
     { label: 'Lua', image: '/memory-cards/lua.webp' },
     { label: 'Estrela', image: '/memory-cards/estrela.webp' },
@@ -118,7 +116,6 @@ const MEMORY_IMAGE_POOLS: Record<keyof typeof memoryThemePools, MemoryCardAsset[
     { label: 'Cobra', image: '/memory-cards/cobra.webp' },
   ],
   space: [
-    { label: 'Saturno', image: '/memory-cards/saturno.webp' },
     { label: 'Lua', image: '/memory-cards/lua.webp' },
     { label: 'Estrela', image: '/memory-cards/estrela.webp' },
     { label: 'Sol', image: '/memory-cards/sol.webp' },
@@ -129,12 +126,8 @@ const MEMORY_IMAGE_POOLS: Record<keyof typeof memoryThemePools, MemoryCardAsset[
     { label: 'Coruja', image: '/memory-cards/coruja.webp' },
   ],
   insects: [
-    { label: 'Borboleta', image: '/memory-cards/borboleta.webp' },
-    { label: 'Grilo', image: '/memory-cards/grilo.webp' },
-    { label: 'Mosquinha', image: '/memory-cards/mosquinha.webp' },
-    { label: 'Mosquito', image: '/memory-cards/mosquito.webp' },
-    { label: 'Jacaré', image: '/memory-cards/jacare.webp' },
     { label: 'Lagarto', image: '/memory-cards/lagarto.webp' },
+    { label: 'Jacaré', image: '/memory-cards/jacare.webp' },
     { label: 'Rato', image: '/memory-cards/rato.webp' },
     { label: 'Raposa', image: '/memory-cards/raposa.webp' },
     { label: 'Gato', image: '/memory-cards/gato.webp' },
@@ -146,9 +139,6 @@ const MEMORY_IMAGE_POOLS: Record<keyof typeof memoryThemePools, MemoryCardAsset[
     { label: 'Carro', image: '/memory-cards/carro.webp' },
     { label: 'Moto', image: '/memory-cards/moto.webp' },
     { label: 'Avião', image: '/memory-cards/aviao.webp' },
-    { label: 'Bicicleta', image: '/memory-cards/bicicleta.webp' },
-    { label: 'Trator', image: '/memory-cards/trator.webp' },
-    { label: 'Patins', image: '/memory-cards/patins.webp' },
     { label: 'Carro alegre', image: '/memory-cards/carro.webp' },
     { label: 'Moto alegre', image: '/memory-cards/moto.webp' },
     { label: 'Avião feliz', image: '/memory-cards/aviao.webp' },
@@ -156,39 +146,29 @@ const MEMORY_IMAGE_POOLS: Record<keyof typeof memoryThemePools, MemoryCardAsset[
     { label: 'Golfinho rápido', image: '/memory-cards/golfinho.webp' },
   ],
   dinos: [
-    { label: 'Dinossauro 1', image: '/memory-cards/dinossauro01.webp' },
-    { label: 'Dinossauro 2', image: '/memory-cards/dinossauro02.webp' },
-    { label: 'Dinossauro 3', image: '/memory-cards/dinossauro03.webp' },
-    { label: 'Dinossauro 4', image: '/memory-cards/dinossauro04.webp' },
-    { label: 'Jacaré', image: '/memory-cards/jacare.webp' },
     { label: 'Lagarto', image: '/memory-cards/lagarto.webp' },
+    { label: 'Jacaré', image: '/memory-cards/jacare.webp' },
     { label: 'Cobra', image: '/memory-cards/cobra.webp' },
     { label: 'Tartaruga', image: '/memory-cards/tartaruga.webp' },
     { label: 'Elefante', image: '/memory-cards/elefante.webp' },
-    { label: 'Hipopótamo', image: '/memory-cards/hipopotamo.webp' },
+    { label: 'Hipopótamo', image: '/memory-cards/hipopotamo,.webp' },
     { label: 'Zebra', image: '/memory-cards/zebra.webp' },
     { label: 'Girafa', image: '/memory-cards/girafa.webp' },
   ],
   garden: [
-    { label: 'Casa', image: '/memory-cards/casa.webp' },
-    { label: 'Guarda-sol', image: '/memory-cards/guarda_sol.webp' },
-    { label: 'Montanha', image: '/memory-cards/montanha.webp' },
-    { label: 'Borboleta', image: '/memory-cards/borboleta.webp' },
-    { label: 'Grilo', image: '/memory-cards/grilo.webp' },
     { label: 'Arco-íris', image: '/memory-cards/arcoiris.webp' },
     { label: 'Sol', image: '/memory-cards/sol.webp' },
     { label: 'Lua', image: '/memory-cards/lua.webp' },
     { label: 'Estrela', image: '/memory-cards/estrela.webp' },
     { label: 'Galinha', image: '/memory-cards/galinha.webp' },
     { label: 'Coelho', image: '/memory-cards/coelho.webp' },
+    { label: 'Borboleta', image: '/memory-cards/gaivota.webp' },
     { label: 'Pássaro', image: '/memory-cards/coruja.webp' },
   ],
   weather: [
-    { label: 'Guarda-sol', image: '/memory-cards/guarda_sol.webp' },
-    { label: 'Montanha', image: '/memory-cards/montanha.webp' },
     { label: 'Sol', image: '/memory-cards/sol.webp' },
     { label: 'Lua', image: '/memory-cards/lua.webp' },
-    { label: 'Chuva', image: '/memory-cards/chuva.webp' },
+    { label: 'Chuva', image: '/memory-cards/chuva.png' },
     { label: 'Arco-íris', image: '/memory-cards/arcoiris.webp' },
     { label: 'Estrela', image: '/memory-cards/estrela.webp' },
     { label: 'Gaivota', image: '/memory-cards/gaivota.webp' },
@@ -196,11 +176,6 @@ const MEMORY_IMAGE_POOLS: Record<keyof typeof memoryThemePools, MemoryCardAsset[
     { label: 'Baleia', image: '/memory-cards/baleia.webp' },
   ],
   toys: [
-    { label: 'Celular', image: '/memory-cards/celular.webp' },
-    { label: 'Notebook', image: '/memory-cards/notebook.webp' },
-    { label: 'Patins', image: '/memory-cards/patins.webp' },
-    { label: 'Sapato', image: '/memory-cards/sapato.webp' },
-    { label: 'Refrigerante', image: '/memory-cards/refrigerante.webp' },
     { label: 'Menina', image: '/memory-cards/menina.webp' },
     { label: 'Menino', image: '/memory-cards/menino.webp' },
     { label: 'Vovó', image: '/memory-cards/vovo.webp' },
@@ -211,8 +186,6 @@ const MEMORY_IMAGE_POOLS: Record<keyof typeof memoryThemePools, MemoryCardAsset[
     { label: 'Moto', image: '/memory-cards/moto.webp' },
   ],
   farm: [
-    { label: 'Trator', image: '/memory-cards/trator.webp' },
-    { label: 'Casa', image: '/memory-cards/casa.webp' },
     { label: 'Galinha', image: '/memory-cards/galinha.webp' },
     { label: 'Porco', image: '/memory-cards/porco.webp' },
     { label: 'Cavalo', image: '/memory-cards/cavalo.webp' },
@@ -495,11 +468,11 @@ const MemoryGame = ({ phase, onComplete }: { phase: MemoryPhase; onComplete: (re
   };
 
   return (
-    <div className="flex h-full min-h-0 flex-col gap-1.5 overflow-hidden">
-      <div className="grid gap-1.5 rounded-[1rem] bg-[linear-gradient(180deg,#eff6ff,#fdf2f8)] p-1.5 shadow-inner md:grid-cols-[minmax(0,1.2fr)_repeat(4,minmax(0,0.68fr))] md:items-center">
+    <div className="grid h-full min-h-0 grid-rows-[auto_1fr] gap-2 overflow-hidden">
+      <div className="grid gap-2 rounded-[1rem] bg-[linear-gradient(180deg,#eff6ff,#fdf2f8)] p-2 shadow-inner md:grid-cols-[minmax(0,1.45fr)_repeat(4,minmax(0,0.72fr))] md:items-center">
         <div className="min-w-0">
           <div className="text-[10px] font-black uppercase tracking-[0.22em] text-indigo-500">Memória</div>
-          <h3 className="mt-1 text-[1.05rem] font-black leading-tight text-slate-950 md:text-[1.15rem]">{phase.title}</h3>
+          <h3 className="mt-1 text-[1rem] font-black leading-tight text-slate-950 md:text-[1.1rem]">{phase.title}</h3>
           <p className="mt-0.5 text-[10px] leading-4 text-slate-700 md:text-[11px]">{phase.description}</p>
         </div>
         <div className="rounded-[0.85rem] bg-white/88 px-2 py-1.5 shadow-sm">
@@ -519,17 +492,18 @@ const MemoryGame = ({ phase, onComplete }: { phase: MemoryPhase; onComplete: (re
           <div className="mt-0.5 text-[11px] font-black text-slate-950">{phase.reward}</div>
         </div>
       </div>
-      <div className="flex min-h-0 flex-1 flex-col rounded-[1.3rem] bg-[linear-gradient(180deg,rgba(91,33,182,0.16),rgba(56,189,248,0.12))] p-1.5 overflow-hidden">
-        <div className="mb-1.5 flex items-center justify-between gap-3 rounded-[0.9rem] bg-white/80 px-3 py-1.5">
+
+      <div className="grid min-h-0 grid-rows-[auto_1fr] rounded-[1.25rem] bg-[linear-gradient(180deg,rgba(91,33,182,0.16),rgba(56,189,248,0.12))] p-2 overflow-hidden">
+        <div className="mb-2 flex items-center justify-between gap-3 rounded-[0.9rem] bg-white/82 px-3 py-2">
           <div className="text-[11px] font-black uppercase tracking-[0.2em] text-indigo-500">Fase ativa</div>
           <div className="text-[11px] font-semibold text-slate-700">{cards.length} cartas · {rows} linhas</div>
         </div>
+
         <div
-          className="grid min-h-0 flex-1 gap-1.5 overflow-hidden"
+          className="grid min-h-0 flex-1 items-stretch gap-2 overflow-hidden"
           style={{
             gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))`,
             gridTemplateRows: `repeat(${rows}, minmax(0, 1fr))`,
-            height: '100%',
           }}
         >
           {cards.map((card) => {
@@ -539,18 +513,19 @@ const MemoryGame = ({ phase, onComplete }: { phase: MemoryPhase; onComplete: (re
                 key={card.id}
                 type="button"
                 onClick={() => revealCard(card.id)}
-                className={`group relative h-full w-full min-h-0 overflow-hidden rounded-[0.8rem] border-2 shadow-sm transition-transform duration-200 hover:scale-[1.01] ${visible ? 'border-yellow-300 bg-slate-900 p-0' : 'border-white/40 bg-[linear-gradient(180deg,#8b5cf6,#6366f1)]'}`}
+                className={`group relative h-full min-h-0 w-full overflow-hidden rounded-[0.95rem] border-2 shadow-sm transition-transform duration-200 hover:scale-[1.01] ${visible ? 'border-yellow-300 bg-slate-900 p-0' : 'border-white/40 bg-[linear-gradient(180deg,#8b5cf6,#6366f1)]'}`}
               >
-                <div className={`relative flex h-full w-full items-center justify-center overflow-hidden rounded-[0.7rem] ${visible ? 'bg-[radial-gradient(circle_at_top,#a78bfa,#6d28d9_60%,#312e81_100%)]' : 'bg-[radial-gradient(circle_at_top,#fbcfe8,transparent_40%),linear-gradient(145deg,#7c3aed,#ec4899)]'}`}>
+                <div className={`relative flex h-full w-full items-center justify-center overflow-hidden rounded-[0.8rem] ${visible ? 'bg-[radial-gradient(circle_at_top,#a78bfa,#6d28d9_60%,#312e81_100%)]' : 'bg-[radial-gradient(circle_at_top,#fbcfe8,transparent_40%),linear-gradient(145deg,#7c3aed,#ec4899)]'}`}>
                   {visible ? (
                     card.image ? (
-                      <div className="memory-card-face relative h-full w-full overflow-hidden rounded-[0.72rem]">
-                        <div className="memory-card-face__glow" />
-                        <img src={card.image} alt={card.label} className="memory-card-face__image" />
-                        <div className="memory-card-face__label">
+                      <>
+                        <div className="absolute inset-0 flex items-center justify-center bg-[radial-gradient(circle_at_top,#6d28d9_0%,#4c1d95_58%,#312e81_100%)] p-2">
+                          <img src={card.image} alt={card.label} className="h-full w-full object-contain object-center drop-shadow-[0_10px_24px_rgba(15,23,42,0.22)]" />
+                        </div>
+                        <div className="absolute inset-x-1 bottom-1 rounded-full bg-slate-950/82 px-1.5 py-0.5 text-center text-[8px] font-black text-white shadow-sm md:text-[9px]">
                           {card.label}
                         </div>
-                      </div>
+                      </>
                     ) : (
                       <span className="text-2xl md:text-3xl">{card.emoji}</span>
                     )
@@ -917,10 +892,31 @@ const GameModalContent = ({
   nextPhase: GamePhase | null;
 }) => {
   const [completedResult, setCompletedResult] = useState<GameResult | null>(null);
+  const [autoContinueIn, setAutoContinueIn] = useState(2);
 
   useEffect(() => {
     setCompletedResult(null);
+    setAutoContinueIn(2);
   }, [phase.id]);
+
+  useEffect(() => {
+    if (!completedResult || !nextPhase) return;
+    setAutoContinueIn(2);
+    const intervalId = window.setInterval(() => {
+      setAutoContinueIn((value) => {
+        if (value <= 1) {
+          window.clearInterval(intervalId);
+          return 0;
+        }
+        return value - 1;
+      });
+    }, 1000);
+    const timeoutId = window.setTimeout(() => onContinue(nextPhase.id), 2000);
+    return () => {
+      window.clearInterval(intervalId);
+      window.clearTimeout(timeoutId);
+    };
+  }, [completedResult, nextPhase, onContinue]);
 
   const handleComplete = (result: GameResult) => {
     onWin(phase.id, result);
@@ -973,7 +969,7 @@ const GameModalContent = ({
                   onClick={() => (nextPhase ? onContinue(nextPhase.id) : onBackToMenu())}
                   className="flex-1 rounded-full bg-[linear-gradient(135deg,#84cc16,#10b981)] px-5 py-4 text-base font-black text-white shadow-lg"
                 >
-                  {nextPhase ? 'Continuar' : 'Finalizar mundo'}
+                  {nextPhase ? `Continuar automaticamente (${autoContinueIn})` : 'Finalizar mundo'}
                 </button>
                 <button
                   type="button"
