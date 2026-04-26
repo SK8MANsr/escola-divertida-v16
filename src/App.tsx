@@ -335,29 +335,41 @@ const GlassPanel = ({
   </motion.section>
 );
 
-const ModalShell = ({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) => (
+const ModalShell = ({
+  title,
+  onClose,
+  children,
+  fullScreen = false,
+}: {
+  title: string;
+  onClose: () => void;
+  children: React.ReactNode;
+  fullScreen?: boolean;
+}) => (
   <motion.div
     initial={{ opacity: 0 }}
     animate={{ opacity: 1 }}
     exit={{ opacity: 0 }}
-    className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-3 backdrop-blur-sm"
+    className={`fixed inset-0 z-[70] bg-slate-950/60 backdrop-blur-sm ${fullScreen ? 'p-0' : 'flex items-center justify-center p-3'}`}
   >
     <motion.div
-      initial={{ opacity: 0, scale: 0.94, y: 16 }}
+      initial={{ opacity: 0, scale: fullScreen ? 1 : 0.94, y: fullScreen ? 0 : 16 }}
       animate={{ opacity: 1, scale: 1, y: 0 }}
-      exit={{ opacity: 0, scale: 0.94, y: 16 }}
-      className="relative flex max-h-[92vh] w-full max-w-6xl flex-col overflow-hidden rounded-[2.3rem] border border-white/50 bg-[linear-gradient(180deg,rgba(255,255,255,0.95),rgba(243,244,255,0.96))] shadow-[0_40px_120px_rgba(15,23,42,0.35)]"
+      exit={{ opacity: 0, scale: fullScreen ? 1 : 0.94, y: fullScreen ? 0 : 16 }}
+      className={fullScreen
+        ? 'relative flex h-[100dvh] w-full flex-col overflow-hidden bg-[radial-gradient(circle_at_top,#ffffff,#eef2ff_48%,#ddd6fe_100%)]'
+        : 'relative flex max-h-[92vh] w-full max-w-6xl flex-col overflow-hidden rounded-[2.3rem] border border-white/50 bg-[linear-gradient(180deg,rgba(255,255,255,0.95),rgba(243,244,255,0.96))] shadow-[0_40px_120px_rgba(15,23,42,0.35)]'}
     >
-      <div className="flex items-center justify-between border-b border-indigo-100 px-5 py-4 md:px-7">
+      <div className={`flex items-center justify-between border-b border-indigo-100 bg-white/75 px-5 py-4 backdrop-blur-sm ${fullScreen ? 'md:px-8' : 'md:px-7'}`}>
         <div>
-          <div className="text-xs font-black uppercase tracking-[0.2em] text-indigo-500">Janela interativa</div>
+          <div className="text-xs font-black uppercase tracking-[0.2em] text-indigo-500">{fullScreen ? 'Partida em tela cheia' : 'Janela interativa'}</div>
           <div className="mt-1 text-2xl font-black text-slate-950">{title}</div>
         </div>
         <button type="button" onClick={onClose} className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-slate-900 text-white shadow-lg">
           <X className="h-5 w-5" />
         </button>
       </div>
-      <div className="overflow-auto p-4 md:p-6">{children}</div>
+      <div className={fullScreen ? 'min-h-0 flex-1 overflow-auto p-4 md:p-8' : 'overflow-auto p-4 md:p-6'}>{children}</div>
     </motion.div>
   </motion.div>
 );
@@ -814,19 +826,92 @@ const PuzzleGame = ({ phase, onComplete }: { phase: PuzzlePhase; onComplete: (re
   );
 };
 
-const GameModalContent = ({ phase, onClose, onWin }: { phase: GamePhase; onClose: () => void; onWin: (phaseId: string, result: GameResult) => void }) => {
+const GameModalContent = ({
+  phase,
+  onBackToMenu,
+  onWin,
+  onContinue,
+  nextPhase,
+}: {
+  phase: GamePhase;
+  onBackToMenu: () => void;
+  onWin: (phaseId: string, result: GameResult) => void;
+  onContinue: (phaseId: string) => void;
+  nextPhase: GamePhase | null;
+}) => {
+  const [completedResult, setCompletedResult] = useState<GameResult | null>(null);
+
+  useEffect(() => {
+    setCompletedResult(null);
+  }, [phase.id]);
+
   const handleComplete = (result: GameResult) => {
     onWin(phase.id, result);
-    window.setTimeout(onClose, 500);
+    setCompletedResult(result);
   };
 
-  if (phase.game === 'memory') return <MemoryGame phase={phase} onComplete={handleComplete} />;
-  if (phase.game === 'alphabet') return <AlphabetGame phase={phase} onComplete={handleComplete} />;
-  if (phase.game === 'math') return <MathGame phase={phase} onComplete={handleComplete} />;
-  if (phase.game === 'shape') return <ShapeGame phase={phase} onComplete={handleComplete} />;
-  if (phase.game === 'colors') return <ColorsGame phase={phase} onComplete={handleComplete} />;
-  if (phase.game === 'maze') return <MazeGame phase={phase} onComplete={handleComplete} />;
-  return <PuzzleGame phase={phase} onComplete={handleComplete} />;
+  const gameContent = (() => {
+    if (phase.game === 'memory') return <MemoryGame phase={phase} onComplete={handleComplete} />;
+    if (phase.game === 'alphabet') return <AlphabetGame phase={phase} onComplete={handleComplete} />;
+    if (phase.game === 'math') return <MathGame phase={phase} onComplete={handleComplete} />;
+    if (phase.game === 'shape') return <ShapeGame phase={phase} onComplete={handleComplete} />;
+    if (phase.game === 'colors') return <ColorsGame phase={phase} onComplete={handleComplete} />;
+    if (phase.game === 'maze') return <MazeGame phase={phase} onComplete={handleComplete} />;
+    return <PuzzleGame phase={phase} onComplete={handleComplete} />;
+  })();
+
+  return (
+    <div className="relative min-h-full">
+      <div className={completedResult ? 'pointer-events-none select-none blur-[3px] saturate-75' : ''}>{gameContent}</div>
+      <AnimatePresence>
+        {completedResult && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.94, y: 18 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.96, y: 12 }}
+            className="absolute inset-0 z-20 flex items-center justify-center bg-slate-950/45 p-4 backdrop-blur-sm"
+          >
+            <div className="w-full max-w-xl rounded-[2.2rem] border border-white/60 bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(243,244,255,0.98))] p-6 shadow-[0_35px_120px_rgba(15,23,42,0.35)] md:p-8">
+              <div className="inline-flex rounded-full bg-emerald-100 px-3 py-1 text-[11px] font-black uppercase tracking-[0.22em] text-emerald-700">Fase concluída</div>
+              <h3 className="mt-4 text-3xl font-black text-slate-950">Muito bem!</h3>
+              <p className="mt-2 text-base text-slate-700">{completedResult.bonusText}</p>
+              <div className="mt-5 flex items-center gap-3 text-3xl">
+                {Array.from({ length: 3 }, (_, index) => (
+                  <span key={index} className={index < completedResult.stars ? 'opacity-100' : 'opacity-25'}>⭐</span>
+                ))}
+              </div>
+              <div className="mt-6 grid gap-3 rounded-[1.6rem] bg-[linear-gradient(135deg,#eef2ff,#fff7ed)] p-4 md:grid-cols-2">
+                <div>
+                  <div className="text-xs font-black uppercase tracking-[0.18em] text-indigo-500">Fase atual</div>
+                  <div className="mt-2 text-lg font-black text-slate-950">{phase.title}</div>
+                </div>
+                <div>
+                  <div className="text-xs font-black uppercase tracking-[0.18em] text-indigo-500">Próxima etapa</div>
+                  <div className="mt-2 text-lg font-black text-slate-950">{nextPhase ? nextPhase.title : 'Voltar ao menu'}</div>
+                </div>
+              </div>
+              <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+                <button
+                  type="button"
+                  onClick={() => (nextPhase ? onContinue(nextPhase.id) : onBackToMenu())}
+                  className="flex-1 rounded-full bg-[linear-gradient(135deg,#84cc16,#10b981)] px-5 py-4 text-base font-black text-white shadow-lg"
+                >
+                  {nextPhase ? 'Continuar' : 'Finalizar mundo'}
+                </button>
+                <button
+                  type="button"
+                  onClick={onBackToMenu}
+                  className="flex-1 rounded-full bg-slate-900 px-5 py-4 text-base font-black text-white shadow-lg"
+                >
+                  Voltar ao menu
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
 };
 
 
@@ -926,6 +1011,15 @@ const App = () => {
   const openPhase = (phaseId: string) => {
     setSelectedPhaseId(phaseId);
     setSelectedWorld(phaseMap[phaseId].game);
+  };
+
+  const closeGameToMenu = () => {
+    setSelectedPhaseId(null);
+    setPanel('play');
+  };
+
+  const continueFromGame = (phaseId: string) => {
+    openPhase(phaseId);
   };
 
   const openMenuItem = (key: PanelKey) => {
@@ -1440,11 +1534,19 @@ const App = () => {
       </AnimatePresence>
 
       <AnimatePresence>
-        {selectedPhaseId && (
-          <ModalShell title={`${formatWorldName(phaseMap[selectedPhaseId].game)} • ${phaseMap[selectedPhaseId].title}`} onClose={() => setSelectedPhaseId(null)}>
-            <GameModalContent phase={phaseMap[selectedPhaseId]} onClose={() => setSelectedPhaseId(null)} onWin={completePhase} />
-          </ModalShell>
-        )}
+        {selectedPhaseId && (() => {
+          const currentPhase = phaseMap[selectedPhaseId];
+          const phaseIds = worldPhaseOrder[currentPhase.game];
+          const currentIndex = phaseIds.indexOf(selectedPhaseId);
+          const nextPhaseId = currentIndex >= 0 && currentIndex < phaseIds.length - 1 ? phaseIds[currentIndex + 1] : null;
+          const nextPhase = nextPhaseId ? phaseMap[nextPhaseId] : null;
+
+          return (
+            <ModalShell title={`${formatWorldName(currentPhase.game)} • ${currentPhase.title}`} onClose={closeGameToMenu} fullScreen>
+              <GameModalContent phase={currentPhase} onBackToMenu={closeGameToMenu} onContinue={continueFromGame} nextPhase={nextPhase} onWin={completePhase} />
+            </ModalShell>
+          );
+        })()}
       </AnimatePresence>
 
       <AnimatePresence>
