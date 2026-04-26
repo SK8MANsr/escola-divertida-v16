@@ -911,7 +911,7 @@ const GameModalContent = ({
 
   return (
     <div className="relative flex h-full min-h-0 flex-col overflow-hidden">
-      <div className={completedResult ? 'pointer-events-none select-none blur-[3px] saturate-75' : ''}>{gameContent}</div>
+      <div className={`flex min-h-0 flex-1 flex-col ${completedResult ? 'pointer-events-none select-none blur-[3px] saturate-75' : ''}`}>{gameContent}</div>
       <AnimatePresence>
         {completedResult && (
           <motion.div
