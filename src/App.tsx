@@ -656,8 +656,12 @@ const GameModalContent = ({ phase, onClose, onWin }: { phase: GamePhase; onClose
   return <PuzzleGame phase={phase} onComplete={handleComplete} />;
 };
 
+
+type ModalPanelKey = 'packs' | 'events' | 'rewards' | 'parents' | 'settings';
+
 const App = () => {
   const [panel, setPanel] = useState<PanelKey>('home');
+  const [modalPanel, setModalPanel] = useState<ModalPanelKey | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [profiles] = useState<ChildProfile[]>(() => safeReadStorage(STORAGE_KEYS.profiles, defaultProfiles));
   const [activeProfileId] = useState<string>(() => safeReadStorage(STORAGE_KEYS.activeProfileId, defaultProfiles[0].id));
@@ -666,7 +670,7 @@ const App = () => {
   const [seasonalEvents, setSeasonalEvents] = useState<SeasonalEvent[]>(fallbackSeasonalEvents);
   const [weeklyTracks, setWeeklyTracks] = useState<ParentWeeklyTrack[]>(fallbackParentWeeklyTracks);
   const [catalogStatus, setCatalogStatus] = useState<'local' | 'remote'>('local');
-  const [selectedWorld, setSelectedWorld] = useState<GameKey | null>(null);
+  const [selectedWorld, setSelectedWorld] = useState<GameKey | null>('memory');
   const [selectedPhaseId, setSelectedPhaseId] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [audioEnabled, setAudioEnabled] = useState<boolean>(() => safeReadStorage(STORAGE_KEYS.settings, { audio: true }).audio);
@@ -711,7 +715,10 @@ const App = () => {
     return () => window.clearTimeout(timeoutId);
   }, [toast]);
 
-  const activeTrack = useMemo(() => weeklyTracks.find((track) => activeProfile.age >= track.ageMin && activeProfile.age <= track.ageMax) ?? weeklyTracks[0], [activeProfile.age, weeklyTracks]);
+  const activeTrack = useMemo(
+    () => weeklyTracks.find((track) => activeProfile.age >= track.ageMin && activeProfile.age <= track.ageMax) ?? weeklyTracks[0],
+    [activeProfile.age, weeklyTracks],
+  );
   const lastWorld = worlds.find((world) => world.game === activeProgress.lastWorld) ?? worlds[0];
   const recommendedPack = contentPacks.find((pack) => pack.recommendedAges.includes(activeProfile.age)) ?? contentPacks[0];
   const featuredEvent = seasonalEvents[0];
@@ -748,57 +755,107 @@ const App = () => {
     setSelectedWorld(phaseMap[phaseId].game);
   };
 
+  const openMenuItem = (key: PanelKey) => {
+    if (key === 'home' || key === 'play' || key === 'map') {
+      setPanel(key);
+      setModalPanel(null);
+    } else {
+      setModalPanel(key as ModalPanelKey);
+    }
+    setDrawerOpen(false);
+  };
+
+  const worldCompletion = (game: GameKey) => {
+    const phaseIds = worldPhaseOrder[game];
+    const done = phaseIds.filter((phaseId) => activeProgress.completedPhases.includes(phaseId)).length;
+    return {
+      done,
+      total: phaseIds.length,
+      ratio: phaseIds.length ? done / phaseIds.length : 0,
+    };
+  };
+
+  const quickPanels: Array<{ key: ModalPanelKey; label: string; icon: typeof Gift; tone: string }> = [
+    { key: 'packs', label: 'Packs', icon: WandSparkles, tone: 'from-orange-500 to-pink-500' },
+    { key: 'events', label: 'Eventos', icon: Sparkles, tone: 'from-amber-500 to-orange-500' },
+    { key: 'rewards', label: 'Prêmios', icon: Gift, tone: 'from-violet-500 to-fuchsia-500' },
+    { key: 'parents', label: 'Pais', icon: Users, tone: 'from-blue-500 to-cyan-500' },
+  ];
+
   const sidebar = (
-    <aside className="v8-sidebar hidden w-[120px] shrink-0 flex-col rounded-[2rem] border border-white/55 bg-white/72 p-4 shadow-[0_24px_80px_rgba(15,23,42,0.18)] backdrop-blur-2xl xl:flex">
-      <div className="mb-5 rounded-[1.8rem] bg-[linear-gradient(135deg,#1d4ed8,#7c3aed,#ec4899)] p-4 text-center text-white shadow-lg">
-        <div className="text-3xl">⭐</div>
-        <div className="mt-2 text-sm font-black">Estelinha</div>
+    <aside className="hidden w-[168px] shrink-0 flex-col rounded-[2.4rem] border border-white/65 bg-[linear-gradient(180deg,rgba(255,255,255,0.86),rgba(240,244,255,0.96))] p-4 shadow-[0_28px_100px_rgba(27,36,94,0.2)] backdrop-blur-2xl xl:flex">
+      <div className="mb-4 rounded-[2rem] bg-[linear-gradient(160deg,#3b82f6,#7c3aed,#ec4899)] p-4 text-white shadow-[0_24px_50px_rgba(124,58,237,0.36)]">
+        <div className="flex items-center gap-3">
+          <div className="flex h-14 w-14 items-center justify-center rounded-[1.4rem] bg-white/20 text-3xl shadow-inner">⭐</div>
+          <div>
+            <div className="text-xs font-black uppercase tracking-[0.22em] text-white/80">Companheira</div>
+            <div className="mt-1 text-xl font-black">Estelinha</div>
+          </div>
+        </div>
+        <div className="mt-4 rounded-[1.4rem] bg-white/18 px-3 py-3 text-sm font-semibold text-white/90">Toque em um botão grande e abra uma aventura sem se perder.</div>
       </div>
       <div className="flex flex-1 flex-col gap-3">
         {panelItems.map((item) => {
           const Icon = item.icon;
-          const active = panel === item.key;
+          const active = (modalPanel ? modalPanel === item.key : panel === item.key) && !(item.key === 'home' || item.key === 'play' || item.key === 'map' ? false : false);
           return (
             <button
               key={item.key}
               type="button"
-              onClick={() => setPanel(item.key)}
-              className={`group rounded-[1.6rem] px-3 py-3 text-center shadow-sm ${active ? `bg-[linear-gradient(135deg,var(--tw-gradient-stops))] ${item.tone} text-white` : 'bg-white/88 text-slate-800'}`}
+              onClick={() => openMenuItem(item.key)}
+              className={`group rounded-[1.8rem] px-3 py-3 text-left shadow-sm ${active ? `bg-[linear-gradient(135deg,var(--tw-gradient-stops))] ${item.tone} text-white shadow-[0_16px_40px_rgba(79,70,229,0.24)]` : 'bg-white/88 text-slate-800 hover:bg-white'}`}
             >
-              <Icon className="mx-auto h-6 w-6" />
-              <div className="mt-2 text-[11px] font-black uppercase tracking-[0.18em]">{item.label}</div>
+              <div className="flex items-center gap-3">
+                <div className={`inline-flex h-11 w-11 items-center justify-center rounded-[1.1rem] ${active ? 'bg-white/18 text-white' : 'bg-slate-100 text-slate-800'}`}>
+                  <Icon className="h-5 w-5" />
+                </div>
+                <div className="min-w-0">
+                  <div className="text-sm font-black tracking-tight">{item.label}</div>
+                  <div className={`text-[10px] font-black uppercase tracking-[0.18em] ${active ? 'text-white/80' : 'text-slate-400'}`}>{item.key === 'home' || item.key === 'play' || item.key === 'map' ? 'Tela' : 'Janela'}</div>
+                </div>
+              </div>
             </button>
           );
         })}
+      </div>
+      <div className="mt-4 rounded-[1.8rem] bg-[linear-gradient(160deg,#eef2ff,#fff7ed)] p-4 shadow-sm">
+        <div className="text-xs font-black uppercase tracking-[0.2em] text-indigo-500">Próximo presente</div>
+        <div className="mt-2 text-2xl font-black text-slate-950">{activeProgress.stars} ⭐</div>
+        <div className="mt-2 h-3 overflow-hidden rounded-full bg-white/90">
+          <div className="h-full rounded-full bg-[linear-gradient(135deg,#f59e0b,#ef4444)]" style={{ width: `${cap((activeProgress.stars / 2500) * 100, 6, 100)}%` }} />
+        </div>
       </div>
     </aside>
   );
 
   const topBar = (
-    <header className="flex flex-wrap items-center justify-between gap-4 rounded-[2rem] border border-white/55 bg-white/72 px-4 py-4 shadow-[0_18px_60px_rgba(15,23,42,0.14)] backdrop-blur-2xl md:px-6">
-      <div className="flex items-center gap-3">
-        <button type="button" onClick={() => setDrawerOpen(true)} className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-slate-900 text-white xl:hidden">
-          <Menu className="h-5 w-5" />
-        </button>
-        <div className="flex items-center gap-3 rounded-[1.6rem] bg-[linear-gradient(135deg,#1d4ed8,#7c3aed,#ec4899)] px-4 py-3 text-white shadow-lg">
-          <div className="text-3xl">🌟</div>
-          <div>
-            <div className="text-xs font-black uppercase tracking-[0.2em] text-white/80">Escola Divertida</div>
-            <div className="text-xl font-black">V8 premium kids</div>
+    <header className="rounded-[2.4rem] border border-white/60 bg-[linear-gradient(180deg,rgba(255,255,255,0.8),rgba(242,246,255,0.92))] px-4 py-4 shadow-[0_18px_60px_rgba(15,23,42,0.16)] backdrop-blur-2xl md:px-6">
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <button type="button" onClick={() => setDrawerOpen(true)} className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-slate-900 text-white shadow-lg xl:hidden">
+            <Menu className="h-5 w-5" />
+          </button>
+          <div className="flex items-center gap-3 rounded-[1.8rem] bg-[linear-gradient(140deg,#2563eb,#7c3aed,#f43f5e)] px-4 py-3 text-white shadow-[0_18px_45px_rgba(76,29,149,0.34)]">
+            <div className="flex h-14 w-14 items-center justify-center rounded-[1.3rem] bg-white/18 text-3xl">🌟</div>
+            <div>
+              <div className="text-[11px] font-black uppercase tracking-[0.22em] text-white/80">Escola Divertida</div>
+              <div className="text-xl font-black">V9 Premium Kids</div>
+            </div>
           </div>
         </div>
-      </div>
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="flex items-center gap-2 rounded-full bg-yellow-100 px-4 py-2 text-sm font-black text-yellow-700"><Star className="h-4 w-4 fill-current" /> {activeProgress.stars}</div>
-        <div className="flex items-center gap-2 rounded-full bg-red-100 px-4 py-2 text-sm font-black text-red-600"><Heart className="h-4 w-4 fill-current" /> {activeProgress.hearts}</div>
-        <div className="flex items-center gap-2 rounded-full bg-orange-100 px-4 py-2 text-sm font-black text-orange-600"><Flame className="h-4 w-4 fill-current" /> {activeProgress.streak} dias</div>
-        <button type="button" className={`flex items-center gap-3 rounded-full bg-[linear-gradient(135deg,var(--tw-gradient-stops))] px-4 py-2 text-white shadow-lg ${activeProfile.accent}`}>
-          <div className="text-2xl">{activeProfile.avatar}</div>
-          <div className="text-left">
-            <div className="text-sm font-black">{activeProfile.name}</div>
-            <div className="text-[11px] font-semibold text-white/80">{activeProfile.age} anos</div>
-          </div>
-        </button>
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-2 rounded-full bg-yellow-100 px-4 py-2 text-sm font-black text-yellow-700 shadow-sm"><Star className="h-4 w-4 fill-current" /> {activeProgress.stars}</div>
+          <div className="flex items-center gap-2 rounded-full bg-sky-100 px-4 py-2 text-sm font-black text-sky-700 shadow-sm">💎 {activeProgress.gems}</div>
+          <div className="flex items-center gap-2 rounded-full bg-red-100 px-4 py-2 text-sm font-black text-red-600 shadow-sm"><Heart className="h-4 w-4 fill-current" /> {activeProgress.hearts}</div>
+          <div className="flex items-center gap-2 rounded-full bg-orange-100 px-4 py-2 text-sm font-black text-orange-600 shadow-sm"><Flame className="h-4 w-4 fill-current" /> {activeProgress.streak} dias</div>
+          <button type="button" className={`flex items-center gap-3 rounded-full bg-[linear-gradient(135deg,var(--tw-gradient-stops))] px-4 py-2 text-white shadow-lg ${activeProfile.accent}`}>
+            <div className="text-2xl">{activeProfile.avatar}</div>
+            <div className="text-left">
+              <div className="text-sm font-black">{activeProfile.name}</div>
+              <div className="text-[11px] font-semibold text-white/80">{activeProfile.age} anos</div>
+            </div>
+          </button>
+        </div>
       </div>
     </header>
   );
@@ -806,66 +863,110 @@ const App = () => {
   const homePanel = (
     <GlassPanel
       title={`${getTodayPhrase()}, ${activeProfile.name}!`}
-      subtitle="Seu app agora está organizado como um produto infantil premium: bonito, fácil de navegar e com jogos abrindo em janelas próprias."
-      badge={catalogStatus === 'remote' ? 'Catálogo V6 remoto ativo' : 'Catálogo local pronto'}
+      subtitle="Agora o app ficou mais próximo de um jogo infantil premium: blocos grandes, ilhas coloridas, atalhos claros e janelas flutuantes para cada escolha importante."
+      badge={catalogStatus === 'remote' ? 'V9 • catálogo V6 remoto ativo' : 'V9 • catálogo local pronto'}
       art={homeArt}
       actions={
         <div className="flex flex-wrap gap-3">
           <button type="button" onClick={() => setPanel('play')} className="rounded-full bg-[linear-gradient(135deg,#84cc16,#10b981)] px-5 py-3 text-sm font-black text-white shadow-lg">Jogar agora</button>
-          <button type="button" onClick={() => setPanel('rewards')} className="rounded-full bg-[linear-gradient(135deg,#8b5cf6,#ec4899)] px-5 py-3 text-sm font-black text-white shadow-lg">Abrir recompensas</button>
+          <button type="button" onClick={() => setPanel('map')} className="rounded-full bg-[linear-gradient(135deg,#60a5fa,#2563eb)] px-5 py-3 text-sm font-black text-white shadow-lg">Ver mapa</button>
+          <button type="button" onClick={() => setModalPanel('rewards')} className="rounded-full bg-[linear-gradient(135deg,#8b5cf6,#ec4899)] px-5 py-3 text-sm font-black text-white shadow-lg">Abrir recompensas</button>
         </div>
       }
     >
-      <div className="grid gap-5 xl:grid-cols-[1.15fr_0.85fr]">
-        <div className="grid gap-5 md:grid-cols-2">
-          <div className="rounded-[2rem] bg-[linear-gradient(135deg,#dcfce7,#f0fdf4)] p-5 shadow-sm">
-            <div className="text-sm font-black uppercase tracking-[0.18em] text-emerald-600">Continuar</div>
-            <div className="mt-3 text-2xl font-black text-slate-950">{lastWorld.shortTitle}</div>
-            <div className="mt-2 text-sm text-slate-700">Próxima fase pronta para brincar sem rolagem confusa.</div>
-            <button type="button" onClick={() => { setPanel('play'); setSelectedWorld(lastWorld.game); }} className="mt-5 rounded-full bg-[linear-gradient(135deg,#84cc16,#10b981)] px-5 py-3 text-sm font-black text-white shadow-lg">Continuar agora</button>
-          </div>
-          <div className="rounded-[2rem] bg-[linear-gradient(135deg,#ede9fe,#fdf4ff)] p-5 shadow-sm">
-            <div className="text-sm font-black uppercase tracking-[0.18em] text-violet-600">Recompensas</div>
-            <div className="mt-3 text-2xl font-black text-slate-950">{activeProgress.rewardsOpened} prontas</div>
-            <div className="mt-2 text-sm text-slate-700">Baús, selos e troféus com abertura simples e chamativa.</div>
-            <button type="button" onClick={() => setPanel('rewards')} className="mt-5 rounded-full bg-[linear-gradient(135deg,#8b5cf6,#ec4899)] px-5 py-3 text-sm font-black text-white shadow-lg">Ver baús</button>
-          </div>
-          <div className="rounded-[2rem] bg-[linear-gradient(135deg,#fff7ed,#fef3c7)] p-5 shadow-sm md:col-span-2">
-            <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="grid gap-5 xl:grid-cols-[1.2fr_0.8fr]">
+        <div className="space-y-5">
+          <div className="overflow-hidden rounded-[2.3rem] bg-[linear-gradient(135deg,#1d4ed8,#7c3aed,#ec4899)] p-5 text-white shadow-[0_30px_70px_rgba(79,70,229,0.34)]">
+            <div className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
               <div>
-                <div className="text-sm font-black uppercase tracking-[0.18em] text-orange-500">Evento em destaque</div>
-                <div className="mt-2 text-2xl font-black text-slate-950">{featuredEvent.title}</div>
-                <div className="mt-2 text-sm text-slate-700">{featuredEvent.subtitle}</div>
+                <div className="inline-flex rounded-full bg-white/18 px-3 py-1 text-[11px] font-black uppercase tracking-[0.22em] text-white/90">Seu mundo mágico</div>
+                <h3 className="mt-4 text-3xl font-black leading-tight">Toque, escolha e jogue sem bagunça.</h3>
+                <p className="mt-3 max-w-xl text-sm leading-relaxed text-white/88">Tudo foi organizado para a criança encontrar rápido o que quer: jogar, explorar o mapa, abrir packs e ganhar recompensas com clareza visual.</p>
+                <div className="mt-5 flex flex-wrap gap-3">
+                  <button type="button" onClick={() => setPanel('play')} className="rounded-full bg-white px-5 py-3 text-sm font-black text-indigo-700 shadow">Continuar aventura</button>
+                  <button type="button" onClick={() => openPhase(worldPhaseOrder[lastWorld.game][0])} className="rounded-full bg-yellow-300 px-5 py-3 text-sm font-black text-slate-900 shadow">Fase rápida</button>
+                </div>
               </div>
-              <button type="button" onClick={() => setPanel('events')} className="rounded-full bg-white px-4 py-2 text-sm font-black text-orange-700 shadow">Ver evento</button>
+              <div className="rounded-[2rem] border border-white/25 bg-white/14 p-3">
+                <img src={homeArt} alt="Moodboard infantil" className="h-56 w-full rounded-[1.6rem] object-cover shadow-lg" />
+              </div>
             </div>
           </div>
-          <div className="rounded-[2rem] bg-[linear-gradient(135deg,#eff6ff,#ecfeff)] p-5 shadow-sm md:col-span-2">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <div className="text-sm font-black uppercase tracking-[0.18em] text-sky-600">Missões do dia</div>
-                <div className="mt-2 text-lg font-black text-slate-950">Pequenas metas para brincar com objetivo claro</div>
+
+          <div className="grid gap-4 md:grid-cols-4">
+            {[
+              { label: 'Estrelas', value: activeProgress.stars, tone: 'from-yellow-200 to-amber-200', icon: '⭐' },
+              { label: 'Gemas', value: activeProgress.gems, tone: 'from-sky-200 to-cyan-200', icon: '💎' },
+              { label: 'Sequência', value: `${activeProgress.streak} dias`, tone: 'from-orange-200 to-red-200', icon: '🔥' },
+              { label: 'Prêmios', value: `${activeProgress.rewardsOpened} baús`, tone: 'from-fuchsia-200 to-violet-200', icon: '🎁' },
+            ].map((card) => (
+              <div key={card.label} className={`rounded-[1.9rem] bg-[linear-gradient(135deg,var(--tw-gradient-stops))] ${card.tone} p-4 shadow-sm`}>
+                <div className="text-3xl">{card.icon}</div>
+                <div className="mt-3 text-xs font-black uppercase tracking-[0.18em] text-slate-600">{card.label}</div>
+                <div className="mt-1 text-2xl font-black text-slate-950">{card.value}</div>
               </div>
-              <button type="button" onClick={() => setPanel('events')} className="rounded-full bg-white px-4 py-2 text-sm font-black text-sky-700 shadow">Ver eventos</button>
+            ))}
+          </div>
+
+          <div className="rounded-[2.2rem] bg-white/82 p-4 shadow-sm">
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <div>
+                <div className="text-sm font-black uppercase tracking-[0.18em] text-indigo-500">Mundos em destaque</div>
+                <div className="mt-1 text-2xl font-black text-slate-950">Escolha por imagem, cor e personagem</div>
+              </div>
+              <button type="button" onClick={() => setPanel('map')} className="rounded-full bg-slate-900 px-4 py-2 text-sm font-black text-white shadow">Ver tudo</button>
             </div>
-            <div className="mt-4 grid gap-3 md:grid-cols-3">
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+              {worlds.slice(0, 4).map((world) => {
+                const stats = worldCompletion(world.game);
+                return (
+                  <button key={world.game} type="button" onClick={() => { setPanel('play'); setSelectedWorld(world.game); }} className={`group overflow-hidden rounded-[2rem] bg-[linear-gradient(135deg,var(--tw-gradient-stops))] ${world.colorClass} p-4 text-left shadow-lg`}>
+                    <div className="relative overflow-hidden rounded-[1.6rem] border border-white/45">
+                      <img src={worldArtwork[world.game]} alt={world.title} className="h-36 w-full object-cover transition duration-500 group-hover:scale-105" />
+                      <div className="absolute inset-0 bg-gradient-to-t from-slate-950/60 to-transparent" />
+                      <div className="absolute left-3 top-3 inline-flex rounded-full bg-white/80 px-2 py-1 text-[11px] font-black uppercase tracking-[0.14em] text-slate-900">{world.age}</div>
+                      <div className="absolute bottom-3 left-3 text-4xl">{worldEmoji[world.game]}</div>
+                    </div>
+                    <div className="mt-4 flex items-start justify-between gap-3">
+                      <div>
+                        <div className="text-xl font-black text-slate-950">{world.shortTitle}</div>
+                        <div className="mt-2 text-sm font-semibold text-slate-800">{world.description}</div>
+                      </div>
+                      <div className="rounded-full bg-white/85 px-3 py-1 text-xs font-black text-indigo-700 shadow">{stats.done}/{stats.total}</div>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        <div className="space-y-5">
+          <div className="rounded-[2.2rem] bg-[linear-gradient(135deg,#fff7ed,#fef3c7)] p-5 shadow-sm">
+            <div className="text-sm font-black uppercase tracking-[0.18em] text-orange-500">Missões do dia</div>
+            <div className="mt-3 space-y-3">
               {missionCards.map((mission) => (
-                <div key={mission.title} className="rounded-[1.5rem] bg-white/85 p-4 shadow-sm">
-                  <div className="text-base font-black text-slate-950">{mission.title}</div>
+                <div key={mission.title} className="rounded-[1.4rem] bg-white/88 p-4 shadow-sm">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="text-base font-black text-slate-950">{mission.title}</div>
+                    <div className="text-sm font-black text-yellow-600">+{mission.stars}⭐</div>
+                  </div>
                   <div className="mt-2 text-sm text-slate-600">Progresso: {mission.progress}</div>
-                  <div className="mt-2 text-sm font-black text-yellow-600">+{mission.stars} estrelas</div>
                 </div>
               ))}
             </div>
           </div>
-        </div>
-        <div className="rounded-[2.1rem] bg-white/78 p-4 shadow-sm">
-          <img src={homeArt} alt="Moodboard do app" className="h-56 w-full rounded-[1.8rem] object-cover shadow-sm" />
-          <div className="mt-4 rounded-[1.6rem] bg-[linear-gradient(135deg,#eef2ff,#fff7ed)] p-4">
-            <div className="text-sm font-black uppercase tracking-[0.18em] text-indigo-600">Pack recomendado</div>
+          <div className="rounded-[2.2rem] bg-[linear-gradient(135deg,#ede9fe,#fdf2f8)] p-5 shadow-sm">
+            <div className="text-sm font-black uppercase tracking-[0.18em] text-violet-600">Pack recomendado</div>
             <div className="mt-2 text-2xl font-black text-slate-950">{recommendedPack.title}</div>
             <div className="mt-2 text-sm text-slate-700">{recommendedPack.description}</div>
-            <button type="button" onClick={() => setPanel('packs')} className="mt-4 rounded-full bg-slate-900 px-5 py-3 text-sm font-black text-white shadow-lg">Abrir pack</button>
+            <button type="button" onClick={() => setModalPanel('packs')} className="mt-4 rounded-full bg-slate-900 px-5 py-3 text-sm font-black text-white shadow-lg">Abrir coleção</button>
+          </div>
+          <div className="rounded-[2.2rem] bg-[linear-gradient(135deg,#eff6ff,#ecfeff)] p-5 shadow-sm">
+            <div className="text-sm font-black uppercase tracking-[0.18em] text-sky-600">Evento em destaque</div>
+            <div className="mt-2 text-2xl font-black text-slate-950">{featuredEvent.title}</div>
+            <div className="mt-2 text-sm text-slate-700">{featuredEvent.subtitle}</div>
+            <button type="button" onClick={() => setModalPanel('events')} className="mt-4 rounded-full bg-sky-600 px-5 py-3 text-sm font-black text-white shadow-lg">Participar</button>
           </div>
         </div>
       </div>
@@ -873,71 +974,83 @@ const App = () => {
   );
 
   const mapPanel = (
-    <GlassPanel title="Mapa de progressão" subtitle="Cada mundo aparece como um bloco grande, claro e chamativo, com navegação simples para a criança entender onde brincar." badge="Mapa visual premium" art={mapArt}>
-      <div className="grid gap-5 xl:grid-cols-[1.2fr_0.8fr]">
-        <div className="rounded-[2rem] bg-white/82 p-4 shadow-sm">
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            {worlds.map((world, index) => (
-              <button key={world.game} type="button" onClick={() => { setPanel('play'); setSelectedWorld(world.game); }} className={`rounded-[2rem] bg-[linear-gradient(135deg,var(--tw-gradient-stops))] p-4 text-left shadow-lg ${world.colorClass}`}>
-                <div className="flex items-center justify-between gap-3">
-                  <div className="text-4xl">{worldEmoji[world.game]}</div>
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/75 text-lg font-black text-slate-900">{index + 1}</div>
-                </div>
-                <div className="mt-4 text-xl font-black text-slate-950">{world.shortTitle}</div>
-                <div className="mt-2 text-sm font-semibold text-slate-800">{world.description}</div>
-                <div className="mt-4 text-sm font-black text-indigo-700">Abrir mundo</div>
-              </button>
-            ))}
-          </div>
+    <GlassPanel title="Mapa de progressão" subtitle="Os mundos aparecem como ilhas grandes, com progresso claro, botões chamativos e caminho visual fácil de entender." badge="Mapa cinematográfico" art={mapArt}>
+      <div className="rounded-[2.3rem] bg-white/84 p-4 shadow-sm">
+        <div className="mb-5 overflow-hidden rounded-[2rem] border border-white/50">
+          <img src={mapArt} alt="Mapa lúdico" className="h-48 w-full object-cover" />
         </div>
-        <div className="rounded-[2rem] bg-white/82 p-4 shadow-sm">
-          <img src={mapArt} alt="Referência do mapa" className="h-56 w-full rounded-[1.6rem] object-cover shadow-sm" />
-          <div className="mt-4 rounded-[1.6rem] bg-[linear-gradient(135deg,#fff7ed,#fdf2f8)] p-4">
-            <div className="text-sm font-black uppercase tracking-[0.18em] text-orange-500">Missão do dia</div>
-            <div className="mt-2 text-xl font-black text-slate-950">Complete 2 fases do mundo {lastWorld.shortTitle}</div>
-            <div className="mt-2 text-sm text-slate-700">A proposta é reduzir bagunça e deixar sempre um próximo passo muito claro.</div>
-          </div>
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          {worlds.map((world, index) => {
+            const stats = worldCompletion(world.game);
+            return (
+              <button key={world.game} type="button" onClick={() => { setPanel('play'); setSelectedWorld(world.game); }} className={`relative overflow-hidden rounded-[2rem] bg-[linear-gradient(135deg,var(--tw-gradient-stops))] ${world.colorClass} p-4 text-left shadow-lg`}>
+                <div className="absolute right-3 top-3 flex h-11 w-11 items-center justify-center rounded-full bg-white/82 text-lg font-black text-slate-900 shadow">{index + 1}</div>
+                <div className="relative overflow-hidden rounded-[1.5rem] border border-white/50">
+                  <img src={worldArtwork[world.game]} alt={world.title} className="h-36 w-full object-cover" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-slate-950/55 to-transparent" />
+                  <div className="absolute bottom-3 left-3 text-4xl">{worldEmoji[world.game]}</div>
+                </div>
+                <div className="mt-4 text-2xl font-black text-slate-950">{world.shortTitle}</div>
+                <div className="mt-2 text-sm font-semibold text-slate-700">{world.description}</div>
+                <div className="mt-4 flex items-center justify-between gap-3">
+                  <div className="flex gap-1 text-lg">{Array.from({ length: 3 }).map((_, starIndex) => <span key={`${world.game}-${starIndex}`}>{starIndex < getStarsForRatio(stats.ratio) ? '⭐' : '☆'}</span>)}</div>
+                  <div className="rounded-full bg-white/85 px-3 py-2 text-xs font-black uppercase tracking-[0.15em] text-indigo-700 shadow">abrir</div>
+                </div>
+              </button>
+            );
+          })}
         </div>
       </div>
     </GlassPanel>
   );
 
   const playPanel = (
-    <GlassPanel title="Escolha um mundo para jogar" subtitle="Nada de uma página gigante e confusa: agora a criança entra pelo menu e toca no mundo desejado para abrir uma janela do jogo." badge="Launcher de jogos" art={gameArt}>
-      <div className="grid gap-5 xl:grid-cols-[1.08fr_0.92fr]">
+    <GlassPanel title="Escolha um mundo para jogar" subtitle="Cada mundo abre uma janela do jogo com objetivos, visual lúdico e fases grandes para a criança tocar sem dificuldade." badge="Launcher infantil" art={gameArt}>
+      <div className="grid gap-5 xl:grid-cols-[1.05fr_0.95fr]">
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {worlds.map((world) => (
-            <button key={world.game} type="button" onClick={() => setSelectedWorld(world.game)} className={`group overflow-hidden rounded-[2rem] bg-[linear-gradient(135deg,var(--tw-gradient-stops))] p-4 text-left shadow-lg ${world.colorClass}`}>
-              <div className="relative overflow-hidden rounded-[1.6rem] border border-white/45">
-                <img src={worldArtwork[world.game]} alt={world.title} className="h-36 w-full object-cover transition duration-500 group-hover:scale-105" />
-                <div className="absolute inset-0 bg-gradient-to-t from-slate-950/55 to-transparent" />
-                <div className="absolute bottom-3 left-3 text-4xl">{worldEmoji[world.game]}</div>
-              </div>
-              <div className="mt-4 text-xl font-black text-slate-950">{world.shortTitle}</div>
-              <div className="mt-2 text-sm font-semibold text-slate-800">{world.age} • {world.description}</div>
-              <div className="mt-4 rounded-full bg-white/85 px-4 py-3 text-center text-sm font-black text-indigo-700 shadow-sm">Abrir mundo</div>
-            </button>
-          ))}
+          {worlds.map((world) => {
+            const stats = worldCompletion(world.game);
+            return (
+              <button key={world.game} type="button" onClick={() => setSelectedWorld(world.game)} className={`group overflow-hidden rounded-[2rem] bg-[linear-gradient(135deg,var(--tw-gradient-stops))] p-4 text-left shadow-lg ${world.colorClass}`}>
+                <div className="relative overflow-hidden rounded-[1.6rem] border border-white/45">
+                  <img src={worldArtwork[world.game]} alt={world.title} className="h-36 w-full object-cover transition duration-500 group-hover:scale-105" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-slate-950/55 to-transparent" />
+                  <div className="absolute bottom-3 left-3 text-4xl">{worldEmoji[world.game]}</div>
+                </div>
+                <div className="mt-4 flex items-start justify-between gap-3">
+                  <div>
+                    <div className="text-xl font-black text-slate-950">{world.shortTitle}</div>
+                    <div className="mt-2 text-sm font-semibold text-slate-800">{world.age}</div>
+                  </div>
+                  <div className="rounded-full bg-white/85 px-3 py-1 text-xs font-black text-indigo-700 shadow">{stats.done}/{stats.total}</div>
+                </div>
+              </button>
+            );
+          })}
         </div>
-        <div className="rounded-[2rem] bg-white/82 p-4 shadow-sm">
+        <div className="rounded-[2.2rem] bg-white/84 p-4 shadow-sm">
           {selectedWorld ? (
             <>
-              <div className="mb-4 flex items-center justify-between gap-3">
-                <div>
-                  <div className="text-sm font-black uppercase tracking-[0.18em] text-indigo-500">Mundo selecionado</div>
-                  <div className="mt-1 text-2xl font-black text-slate-950">{formatWorldName(selectedWorld)}</div>
-                </div>
-                <button type="button" onClick={() => openPhase(worldPhaseOrder[selectedWorld][0])} className="rounded-full bg-[linear-gradient(135deg,#84cc16,#10b981)] px-4 py-3 text-sm font-black text-white shadow-lg">Jogar fase 1</button>
+              <div className="overflow-hidden rounded-[1.8rem] border border-white/50">
+                <img src={worldArtwork[selectedWorld]} alt={formatWorldName(selectedWorld)} className="h-52 w-full object-cover" />
               </div>
-              <div className="grid gap-3 sm:grid-cols-2">
+              <div className="mt-4 flex items-start justify-between gap-3">
+                <div>
+                  <div className="text-xs font-black uppercase tracking-[0.2em] text-indigo-500">Mundo selecionado</div>
+                  <div className="mt-1 text-3xl font-black text-slate-950">{formatWorldName(selectedWorld)}</div>
+                  <div className="mt-2 text-sm text-slate-700">Toque numa fase grande abaixo para abrir a janela do jogo.</div>
+                </div>
+                <button type="button" onClick={() => openPhase(worldPhaseOrder[selectedWorld][0])} className="rounded-full bg-[linear-gradient(135deg,#84cc16,#10b981)] px-4 py-3 text-sm font-black text-white shadow-lg">Primeira fase</button>
+              </div>
+              <div className="mt-4 grid gap-3 sm:grid-cols-2">
                 {worldPhaseOrder[selectedWorld].map((phaseId, index) => {
                   const phase = phaseMap[phaseId];
                   const completed = activeProgress.completedPhases.includes(phaseId);
                   return (
-                    <button key={phaseId} type="button" onClick={() => openPhase(phaseId)} className={`rounded-[1.5rem] border p-4 text-left shadow-sm ${completed ? 'border-emerald-200 bg-emerald-50' : 'border-indigo-100 bg-slate-50'}`}>
+                    <button key={phaseId} type="button" onClick={() => openPhase(phaseId)} className={`rounded-[1.6rem] border p-4 text-left shadow-sm ${completed ? 'border-emerald-200 bg-emerald-50' : 'border-indigo-100 bg-[linear-gradient(135deg,#eef2ff,#fff7ed)]'}`}>
                       <div className="flex items-center justify-between gap-3">
                         <div className="text-sm font-black uppercase tracking-[0.18em] text-indigo-500">Fase {index + 1}</div>
-                        <div className="text-xl">{completed ? '✅' : '🎮'}</div>
+                        <div className="text-xl">{completed ? '✅' : worldEmoji[selectedWorld]}</div>
                       </div>
                       <div className="mt-2 text-lg font-black text-slate-950">{phase.title}</div>
                       <div className="mt-2 text-sm text-slate-700">{phase.description}</div>
@@ -946,181 +1059,178 @@ const App = () => {
                 })}
               </div>
             </>
-          ) : (
-            <>
-              <img src={gameArt} alt="Exemplo visual do jogo" className="h-72 w-full rounded-[1.8rem] object-cover shadow-sm" />
-              <div className="mt-4 rounded-[1.5rem] bg-[linear-gradient(135deg,#eff6ff,#f5f3ff)] p-4 text-sm leading-relaxed text-slate-700">
-                Toque em um mundo à esquerda. Cada escolha abre um catálogo de fases pronto para jogar em uma janela flutuante, com visual mais infantil e menos bagunça.
-              </div>
-            </>
-          )}
+          ) : null}
         </div>
       </div>
     </GlassPanel>
   );
 
   const packsPanel = (
-    <GlassPanel title="Packs organizados por idade e tema" subtitle="Os packs da V6 seguem ativos e agora aparecem em cards grandes, claros e fáceis de abrir." badge="Catálogo de packs">
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        {contentPacks.map((pack) => (
-          <div key={pack.id} className={`rounded-[2rem] bg-[linear-gradient(135deg,var(--tw-gradient-stops))] p-5 shadow-lg ${pack.accentClass}`}>
-            <div className="text-sm font-black uppercase tracking-[0.18em] text-slate-700">{pack.ageLabel}</div>
-            <div className="mt-2 text-2xl font-black text-slate-950">{pack.title}</div>
-            <div className="mt-2 text-sm font-semibold text-slate-800">{pack.description}</div>
-            <div className="mt-4 flex flex-wrap gap-2">
-              {pack.featureBullets.slice(0, 3).map((bullet) => <span key={bullet} className="rounded-full bg-white/80 px-3 py-1 text-xs font-black uppercase tracking-[0.12em] text-slate-800">{bullet}</span>)}
-            </div>
-            <button type="button" onClick={() => openPhase(pack.phaseIds[0])} className="mt-5 rounded-full bg-slate-900 px-5 py-3 text-sm font-black text-white shadow-lg">Abrir pack</button>
+    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+      {contentPacks.map((pack) => (
+        <div key={pack.id} className={`rounded-[2rem] bg-[linear-gradient(135deg,var(--tw-gradient-stops))] p-5 shadow-lg ${pack.accentClass}`}>
+          <div className="text-xs font-black uppercase tracking-[0.18em] text-slate-700">{pack.ageLabel}</div>
+          <div className="mt-2 text-2xl font-black text-slate-950">{pack.title}</div>
+          <div className="mt-2 text-sm font-semibold text-slate-800">{pack.description}</div>
+          <div className="mt-4 flex flex-wrap gap-2">
+            {pack.featureBullets.slice(0, 3).map((bullet) => <span key={bullet} className="rounded-full bg-white/85 px-3 py-1 text-[11px] font-black uppercase tracking-[0.12em] text-slate-800">{bullet}</span>)}
           </div>
-        ))}
-      </div>
-    </GlassPanel>
+          <button type="button" onClick={() => openPhase(pack.phaseIds[0])} className="mt-5 rounded-full bg-slate-900 px-5 py-3 text-sm font-black text-white shadow-lg">Abrir pack</button>
+        </div>
+      ))}
+    </div>
   );
 
   const eventsPanel = (
-    <GlassPanel title="Eventos que deixam o app vivo" subtitle="Campanhas visuais, recompensas temáticas e objetivos simples ajudam a criança a voltar para brincar." badge="Eventos sazonais" art={rewardsArt}>
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        {seasonalEvents.map((event) => (
-          <div key={event.id} className={`rounded-[2rem] bg-[linear-gradient(135deg,var(--tw-gradient-stops))] p-5 text-white shadow-lg ${event.palette}`}>
-            <div className="text-4xl">{event.emoji}</div>
-            <div className="mt-3 text-2xl font-black">{event.title}</div>
-            <div className="mt-2 text-sm font-semibold text-white/90">{event.subtitle}</div>
-            <div className="mt-4 rounded-[1.4rem] bg-white/18 p-3 text-sm font-semibold">Meta: {event.targetCompletions} conclusões • prêmio: {event.rewardLabel}</div>
-            <button type="button" onClick={() => openPhase(worldPhaseOrder[event.world][0])} className="mt-4 rounded-full bg-white/88 px-4 py-3 text-sm font-black text-slate-900 shadow">Participar</button>
-          </div>
-        ))}
-      </div>
-    </GlassPanel>
+    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+      {seasonalEvents.map((event) => (
+        <div key={event.id} className={`rounded-[2rem] bg-[linear-gradient(135deg,var(--tw-gradient-stops))] p-5 text-white shadow-lg ${event.palette}`}>
+          <div className="text-4xl">{event.emoji}</div>
+          <div className="mt-3 text-2xl font-black">{event.title}</div>
+          <div className="mt-2 text-sm font-semibold text-white/90">{event.subtitle}</div>
+          <div className="mt-4 rounded-[1.4rem] bg-white/16 p-3 text-sm font-semibold">Meta: {event.targetCompletions} conclusões • {event.rewardLabel}</div>
+          <button type="button" onClick={() => openPhase(worldPhaseOrder[event.world][0])} className="mt-4 rounded-full bg-white/90 px-4 py-3 text-sm font-black text-slate-900 shadow">Participar</button>
+        </div>
+      ))}
+    </div>
   );
 
   const rewardsPanel = (
-    <GlassPanel title="Baús, selos e conquistas" subtitle="O sistema de recompensas ficou mais próximo das referências premium, com blocos grandes e chamativos." badge="Sala de recompensas" art={rewardsArt}>
-      <div className="grid gap-5 xl:grid-cols-[1.1fr_0.9fr]">
-        <div className="rounded-[2rem] bg-white/82 p-4 shadow-sm">
-          <img src={rewardsArt} alt="Referência visual de recompensas" className="h-72 w-full rounded-[1.8rem] object-cover shadow-sm" />
-          <div className="mt-4 grid gap-3 md:grid-cols-3">
-            {['Baú dourado', 'Pacote de adesivos', 'Troféu estudioso'].map((reward, index) => (
-              <div key={reward} className="rounded-[1.5rem] bg-[linear-gradient(135deg,#fff7ed,#fdf2f8)] p-4 shadow-sm">
-                <div className="text-3xl">{index === 0 ? '🧰' : index === 1 ? '🎁' : '🏆'}</div>
-                <div className="mt-2 text-base font-black text-slate-950">{reward}</div>
-                <div className="mt-2 text-sm text-slate-700">Pronto para abrir com uma animação suave e visual infantil.</div>
+    <div className="grid gap-5 xl:grid-cols-[1fr_1fr]">
+      <div className="rounded-[2rem] bg-[linear-gradient(135deg,#fef3c7,#fdf2f8)] p-5 shadow-sm">
+        <div className="text-xs font-black uppercase tracking-[0.18em] text-orange-500">Cofre encantado</div>
+        <div className="mt-2 text-3xl font-black text-slate-950">{activeProgress.rewardsOpened} recompensas prontas</div>
+        <div className="mt-3 h-4 overflow-hidden rounded-full bg-white/80">
+          <div className="h-full rounded-full bg-[linear-gradient(135deg,#f59e0b,#ec4899)]" style={{ width: `${cap((activeProgress.stars / 2500) * 100, 6, 100)}%` }} />
+        </div>
+        <div className="mt-5 grid gap-3 sm:grid-cols-2">
+          {['Baú dourado', 'Adesivos', 'Troféu estudioso', 'Mascote Estelinha'].map((item, index) => (
+            <div key={item} className="rounded-[1.4rem] bg-white/82 p-4 shadow-sm">
+              <div className="text-3xl">{['🧰','🎁','🏆','⭐'][index]}</div>
+              <div className="mt-2 text-base font-black text-slate-950">{item}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+      <div className="rounded-[2rem] bg-[linear-gradient(135deg,#eef2ff,#ecfeff)] p-5 shadow-sm">
+        <img src={rewardsArt} alt="Sala de recompensas" className="h-64 w-full rounded-[1.8rem] object-cover shadow-sm" />
+        <button type="button" onClick={() => setToast('Recompensa aberta!')} className="mt-5 w-full rounded-[1.8rem] bg-[linear-gradient(135deg,#ef4444,#ec4899)] px-5 py-5 text-lg font-black text-white shadow-lg">Abrir recompensa agora</button>
+      </div>
+    </div>
+  );
+
+  const parentsPanel = (
+    <div className="grid gap-5 xl:grid-cols-[1.05fr_0.95fr]">
+      <div className="grid gap-4 md:grid-cols-2">
+        <div className="rounded-[2rem] bg-white/84 p-5 shadow-sm">
+          <div className="text-xs font-black uppercase tracking-[0.18em] text-indigo-500">Tempo de uso</div>
+          <div className="mt-2 text-4xl font-black text-slate-950">1h 25min</div>
+          <div className="mt-2 text-sm text-slate-600">Recomendado: até 2h por dia.</div>
+        </div>
+        <div className="rounded-[2rem] bg-white/84 p-5 shadow-sm">
+          <div className="text-xs font-black uppercase tracking-[0.18em] text-emerald-600">Mundo favorito</div>
+          <div className="mt-2 text-4xl">{worldEmoji[activeProgress.favoriteWorld]}</div>
+          <div className="mt-2 text-2xl font-black text-slate-950">{formatWorldName(activeProgress.favoriteWorld)}</div>
+        </div>
+        <div className="rounded-[2rem] bg-white/84 p-5 shadow-sm md:col-span-2">
+          <div className="text-xs font-black uppercase tracking-[0.18em] text-violet-600">Trilha sugerida</div>
+          <div className="mt-2 text-2xl font-black text-slate-950">{activeTrack.title}</div>
+          <div className="mt-2 text-sm text-slate-700">{activeTrack.description}</div>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            {activeTrack.days.map((day) => (
+              <div key={day.day} className="rounded-[1.4rem] bg-[linear-gradient(135deg,#eef2ff,#fff7ed)] p-3 shadow-sm">
+                <div className="text-xs font-black uppercase tracking-[0.18em] text-indigo-500">{day.day}</div>
+                <div className="mt-1 text-base font-black text-slate-950">{day.title}</div>
+                <div className="mt-1 text-sm text-slate-700">{day.goal}</div>
               </div>
             ))}
           </div>
         </div>
-        <div className="grid gap-4">
-          <div className="rounded-[2rem] bg-[linear-gradient(135deg,#ede9fe,#fdf2f8)] p-5 shadow-sm">
-            <div className="text-sm font-black uppercase tracking-[0.18em] text-violet-600">Próximo grande marco</div>
-            <div className="mt-3 text-3xl font-black text-slate-950">{activeProgress.stars} / 2500</div>
-            <div className="mt-2 h-4 overflow-hidden rounded-full bg-white/70">
-              <div className="h-full rounded-full bg-[linear-gradient(135deg,#f59e0b,#f43f5e)]" style={{ width: `${Math.min(100, (activeProgress.stars / 2500) * 100)}%` }} />
-            </div>
-          </div>
-          <div className="rounded-[2rem] bg-[linear-gradient(135deg,#dcfce7,#ecfccb)] p-5 shadow-sm">
-            <div className="text-sm font-black uppercase tracking-[0.18em] text-emerald-600">Itens desbloqueados</div>
-            <div className="mt-3 grid gap-3 sm:grid-cols-2">
-              {['Estelinha', 'Dinossauro Lilás', 'Medalha do Saber', 'Baú de Moedas'].map((item) => (
-                <div key={item} className="rounded-[1.4rem] bg-white/82 p-3 text-sm font-black text-slate-900 shadow-sm">✅ {item}</div>
-              ))}
-            </div>
-          </div>
-          <button type="button" onClick={() => setToast('Recompensa aberta!')} className="rounded-[1.8rem] bg-[linear-gradient(135deg,#ef4444,#ec4899)] px-5 py-5 text-lg font-black text-white shadow-lg">Abrir recompensa agora</button>
+      </div>
+      <div className="rounded-[2rem] bg-white/84 p-4 shadow-sm">
+        <img src={parentsArt} alt="Painel dos pais" className="h-64 w-full rounded-[1.8rem] object-cover shadow-sm" />
+        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+          {['Áudio', 'Tempo de tela', 'Conteúdo por idade', 'Relatórios'].map((item) => (
+            <button key={item} type="button" className="rounded-[1.4rem] bg-[linear-gradient(135deg,#eef2ff,#fff7ed)] px-4 py-4 text-sm font-black text-slate-900 shadow-sm">{item}</button>
+          ))}
         </div>
       </div>
-    </GlassPanel>
-  );
-
-  const parentsPanel = (
-    <GlassPanel title="Painel dos pais" subtitle="Acompanhamento claro, bonito e útil, com progresso por mundo, tempo de uso e trilha semanal sugerida." badge="Painel familiar" art={parentsArt}>
-      <div className="grid gap-5 xl:grid-cols-[1.05fr_0.95fr]">
-        <div className="grid gap-4 md:grid-cols-2">
-          <div className="rounded-[2rem] bg-white/82 p-5 shadow-sm">
-            <div className="text-sm font-black uppercase tracking-[0.18em] text-indigo-600">Tempo de uso</div>
-            <div className="mt-3 text-4xl font-black text-slate-950">1h 25min</div>
-            <div className="mt-2 text-sm text-slate-600">Recomendado: até 2h por dia.</div>
-          </div>
-          <div className="rounded-[2rem] bg-white/82 p-5 shadow-sm">
-            <div className="text-sm font-black uppercase tracking-[0.18em] text-emerald-600">Mundo favorito</div>
-            <div className="mt-3 text-4xl">{worldEmoji[activeProgress.favoriteWorld]}</div>
-            <div className="mt-2 text-2xl font-black text-slate-950">{formatWorldName(activeProgress.favoriteWorld)}</div>
-          </div>
-          <div className="rounded-[2rem] bg-white/82 p-5 shadow-sm md:col-span-2">
-            <div className="text-sm font-black uppercase tracking-[0.18em] text-violet-600">Trilha sugerida para {activeProfile.age} anos</div>
-            <div className="mt-3 text-2xl font-black text-slate-950">{activeTrack.title}</div>
-            <div className="mt-2 text-sm text-slate-700">{activeTrack.description}</div>
-            <div className="mt-4 grid gap-3 sm:grid-cols-2">
-              {activeTrack.days.map((day) => (
-                <div key={day.day} className="rounded-[1.4rem] bg-[linear-gradient(135deg,#eef2ff,#f8fafc)] p-3 shadow-sm">
-                  <div className="text-xs font-black uppercase tracking-[0.18em] text-indigo-500">{day.day}</div>
-                  <div className="mt-1 text-base font-black text-slate-950">{day.title}</div>
-                  <div className="mt-1 text-sm text-slate-700">{day.goal}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-        <div className="rounded-[2rem] bg-white/82 p-4 shadow-sm">
-          <img src={parentsArt} alt="Referência do painel dos pais" className="h-64 w-full rounded-[1.8rem] object-cover shadow-sm" />
-          <div className="mt-4 rounded-[1.6rem] bg-[linear-gradient(135deg,#eff6ff,#f0fdf4)] p-4">
-            <div className="text-sm font-black uppercase tracking-[0.18em] text-indigo-600">Controles rápidos</div>
-            <div className="mt-4 grid gap-3 sm:grid-cols-2">
-              {['Áudio', 'Tempo de tela', 'Conteúdo por idade', 'Relatórios'].map((item) => (
-                <button key={item} type="button" className="rounded-[1.4rem] bg-white/88 px-4 py-4 text-sm font-black text-slate-900 shadow-sm">{item}</button>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-    </GlassPanel>
+    </div>
   );
 
   const settingsPanel = (
-    <GlassPanel title="Configurações rápidas" subtitle="Área simples para ligar e desligar recursos sem quebrar a estética do app." badge="Ajustes do app">
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        {[
-          { label: 'Áudio', value: audioEnabled ? 'Ligado' : 'Desligado', onClick: () => setAudioEnabled((value) => !value) },
-          { label: 'Modo criança', value: 'Ativo', onClick: () => setToast('Modo criança já está ativo.') },
-          { label: 'Catálogo', value: catalogStatus === 'remote' ? 'Remoto' : 'Local', onClick: () => setToast('Catálogo carregado com sucesso.') },
-          { label: 'Segurança', value: 'Pais', onClick: () => setPanel('parents') },
-        ].map((item) => (
-          <button key={item.label} type="button" onClick={item.onClick} className="rounded-[2rem] bg-[linear-gradient(135deg,#eef2ff,#fff7ed)] p-5 text-left shadow-sm">
-            <div className="text-sm font-black uppercase tracking-[0.18em] text-indigo-500">{item.label}</div>
-            <div className="mt-3 text-2xl font-black text-slate-950">{item.value}</div>
-          </button>
-        ))}
-      </div>
-    </GlassPanel>
+    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      {[
+        { label: 'Áudio', value: audioEnabled ? 'Ligado' : 'Desligado', onClick: () => setAudioEnabled((value) => !value) },
+        { label: 'Modo criança', value: 'Ativo', onClick: () => setToast('Modo criança já está ativo.') },
+        { label: 'Catálogo', value: catalogStatus === 'remote' ? 'Remoto' : 'Local', onClick: () => setToast('Catálogo carregado com sucesso.') },
+        { label: 'Segurança', value: 'Pais', onClick: () => setModalPanel('parents') },
+      ].map((item) => (
+        <button key={item.label} type="button" onClick={item.onClick} className="rounded-[2rem] bg-[linear-gradient(135deg,#eef2ff,#fff7ed)] p-5 text-left shadow-sm">
+          <div className="text-xs font-black uppercase tracking-[0.18em] text-indigo-500">{item.label}</div>
+          <div className="mt-3 text-2xl font-black text-slate-950">{item.value}</div>
+        </button>
+      ))}
+    </div>
   );
 
-  const panelNode = panel === 'home'
-    ? homePanel
-    : panel === 'map'
-      ? mapPanel
-      : panel === 'play'
-        ? playPanel
-        : panel === 'packs'
-          ? packsPanel
-          : panel === 'events'
-            ? eventsPanel
-            : panel === 'rewards'
-              ? rewardsPanel
-              : panel === 'parents'
-                ? parentsPanel
-                : settingsPanel;
+  const modalNodes: Record<ModalPanelKey, { title: string; node: React.ReactNode }> = {
+    packs: { title: 'Coleções e packs', node: packsPanel },
+    events: { title: 'Eventos especiais', node: eventsPanel },
+    rewards: { title: 'Recompensas mágicas', node: rewardsPanel },
+    parents: { title: 'Painel dos pais', node: parentsPanel },
+    settings: { title: 'Configurações rápidas', node: settingsPanel },
+  };
+
+  const panelNode = panel === 'home' ? homePanel : panel === 'map' ? mapPanel : playPanel;
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,#fef3c7_0%,#eef2ff_26%,#dbeafe_48%,#fdf2f8_78%,#fff7ed_100%)] text-slate-900">
+    <div className="premium-app min-h-screen bg-[radial-gradient(circle_at_top_left,#fff7ed_0%,#eef2ff_24%,#dbeafe_46%,#f5d0fe_74%,#fffdf7_100%)] text-slate-900">
       <div className="pointer-events-none fixed inset-0 overflow-hidden">
-        <div className="absolute -left-24 top-10 h-72 w-72 rounded-full bg-fuchsia-300/25 blur-3xl" />
-        <div className="absolute right-0 top-24 h-80 w-80 rounded-full bg-sky-300/25 blur-3xl" />
-        <div className="absolute bottom-0 left-1/3 h-72 w-72 rounded-full bg-yellow-300/20 blur-3xl" />
+        <div className="absolute -left-16 top-8 h-72 w-72 rounded-full bg-fuchsia-300/25 blur-3xl" />
+        <div className="absolute right-4 top-20 h-96 w-96 rounded-full bg-sky-300/20 blur-3xl" />
+        <div className="absolute bottom-10 left-1/3 h-80 w-80 rounded-full bg-yellow-200/20 blur-3xl" />
+        <div className="v9-stars absolute inset-0 opacity-40" />
       </div>
-      <div className="relative mx-auto flex min-h-screen max-w-[1600px] gap-4 px-3 py-3 md:px-5 md:py-5">
+      <div className="relative mx-auto flex min-h-screen max-w-[1680px] gap-4 px-3 py-3 md:px-5 md:py-5">
         {sidebar}
         <div className="flex min-w-0 flex-1 flex-col gap-4">
           {topBar}
-          <div className="relative min-h-[calc(100vh-128px)]">
+          <div className="grid gap-4 md:grid-cols-[1fr_auto]">
+            <div className="rounded-[2rem] bg-white/70 px-4 py-3 shadow-sm backdrop-blur-xl">
+              <div className="flex flex-wrap items-center gap-3">
+                {quickPanels.map((item) => {
+                  const Icon = item.icon;
+                  return (
+                    <button key={item.key} type="button" onClick={() => setModalPanel(item.key)} className={`rounded-full bg-[linear-gradient(135deg,var(--tw-gradient-stops))] ${item.tone} px-4 py-3 text-sm font-black text-white shadow-lg`}>
+                      <span className="inline-flex items-center gap-2"><Icon className="h-4 w-4" /> {item.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+            <div className="v9-mascot-card rounded-[2rem] bg-[linear-gradient(135deg,#7c3aed,#ec4899)] px-4 py-3 text-white shadow-lg backdrop-blur-xl">
+              <div className="text-xs font-black uppercase tracking-[0.18em] text-white/80">Dica da Estelinha</div>
+              <div className="mt-1 text-sm font-semibold">Toque nos mundos grandes ou use o menu lateral para abrir janelas mágicas.</div>
+            </div>
+          </div>
+          <div className="relative min-h-[calc(100vh-170px)]">
             <AnimatePresence mode="wait">{panelNode}</AnimatePresence>
+          </div>
+          <div className="grid gap-3 md:grid-cols-4">
+            {[
+              { key: 'home', label: 'Início', icon: Home, tone: 'from-fuchsia-500 to-violet-500' },
+              { key: 'play', label: 'Jogar', icon: Play, tone: 'from-lime-500 to-emerald-500' },
+              { key: 'map', label: 'Mapa', icon: Map, tone: 'from-sky-500 to-cyan-500' },
+              { key: 'parents', label: 'Pais', icon: Users, tone: 'from-blue-500 to-cyan-500' },
+            ].map((item) => {
+              const Icon = item.icon;
+              return (
+                <button key={item.key} type="button" onClick={() => openMenuItem(item.key as PanelKey)} className={`rounded-[1.8rem] bg-[linear-gradient(135deg,var(--tw-gradient-stops))] ${item.tone} px-4 py-4 text-white shadow-lg`}>
+                  <span className="flex items-center justify-center gap-2 text-sm font-black"><Icon className="h-5 w-5" /> {item.label}</span>
+                </button>
+              );
+            })}
           </div>
         </div>
       </div>
@@ -1128,16 +1238,16 @@ const App = () => {
       <AnimatePresence>
         {drawerOpen && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-40 bg-slate-950/45 xl:hidden" onClick={() => setDrawerOpen(false)}>
-            <motion.div initial={{ x: -240 }} animate={{ x: 0 }} exit={{ x: -240 }} onClick={(event) => event.stopPropagation()} className="absolute left-0 top-0 h-full w-[290px] bg-white p-4 shadow-[0_30px_90px_rgba(15,23,42,0.32)]">
+            <motion.div initial={{ x: -260 }} animate={{ x: 0 }} exit={{ x: -260 }} onClick={(event) => event.stopPropagation()} className="absolute left-0 top-0 h-full w-[320px] bg-[linear-gradient(180deg,rgba(255,255,255,0.96),rgba(240,244,255,0.98))] p-4 shadow-[0_30px_90px_rgba(15,23,42,0.32)]">
               <div className="mb-4 flex items-center justify-between">
-                <div className="text-lg font-black text-slate-950">Menu</div>
+                <div className="text-lg font-black text-slate-950">Menu mágico</div>
                 <button type="button" onClick={() => setDrawerOpen(false)} className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-slate-900 text-white"><X className="h-4 w-4" /></button>
               </div>
               <div className="grid gap-3">
                 {panelItems.map((item) => {
                   const Icon = item.icon;
                   return (
-                    <button key={item.key} type="button" onClick={() => { setPanel(item.key); setDrawerOpen(false); }} className={`rounded-[1.4rem] bg-[linear-gradient(135deg,var(--tw-gradient-stops))] px-4 py-4 text-left text-white shadow-lg ${item.tone}`}>
+                    <button key={item.key} type="button" onClick={() => openMenuItem(item.key)} className={`rounded-[1.5rem] bg-[linear-gradient(135deg,var(--tw-gradient-stops))] px-4 py-4 text-left text-white shadow-lg ${item.tone}`}>
                       <div className="flex items-center gap-3"><Icon className="h-5 w-5" /><span className="font-black">{item.label}</span></div>
                     </button>
                   );
@@ -1145,6 +1255,14 @@ const App = () => {
               </div>
             </motion.div>
           </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {modalPanel && (
+          <ModalShell title={modalNodes[modalPanel].title} onClose={() => setModalPanel(null)}>
+            {modalNodes[modalPanel].node}
+          </ModalShell>
         )}
       </AnimatePresence>
 
@@ -1158,8 +1276,14 @@ const App = () => {
 
       <AnimatePresence>
         {toast && (
-          <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 24 }} className="fixed bottom-5 right-5 z-50 max-w-sm rounded-[1.5rem] bg-slate-900 px-5 py-4 text-sm font-black text-white shadow-[0_30px_90px_rgba(15,23,42,0.35)]">
-            {toast}
+          <motion.div
+            initial={{ opacity: 0, y: 22, scale: 0.94 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 22, scale: 0.94 }}
+            className="fixed bottom-5 left-1/2 z-[70] w-[min(92vw,560px)] -translate-x-1/2 rounded-[1.8rem] bg-[linear-gradient(135deg,#1d4ed8,#7c3aed,#ec4899)] px-5 py-4 text-center text-white shadow-[0_24px_90px_rgba(76,29,149,0.42)]"
+          >
+            <div className="text-sm font-black uppercase tracking-[0.18em] text-white/80">Mensagem do jogo</div>
+            <div className="mt-1 text-lg font-black">{toast}</div>
           </motion.div>
         )}
       </AnimatePresence>
