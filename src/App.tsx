@@ -281,6 +281,16 @@ const sample = <T,>(items: T[], total: number) => {
   return clone.slice(0, total);
 };
 
+const uniqueBy = <T, K>(items: T[], getKey: (item: T) => K) => {
+  const seen = new Set<K>();
+  return items.filter((item) => {
+    const key = getKey(item);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+};
+
 const getTodayPhrase = () => {
   const hour = new Date().getHours();
   if (hour < 12) return 'Bom dia';
@@ -374,11 +384,24 @@ const ModalShell = ({
   </motion.div>
 );
 
+const ALL_MEMORY_ASSETS = uniqueBy(Object.values(MEMORY_IMAGE_POOLS).flat(), (item) => item.image);
+
 const buildMemoryDeck = (phase: MemoryPhase): MemoryCard[] => {
-  const selectedAssets = sample(MEMORY_IMAGE_POOLS[phase.theme], phase.pairCount);
-  if (selectedAssets.length === phase.pairCount) {
+  const themedAssets = uniqueBy(MEMORY_IMAGE_POOLS[phase.theme], (item) => item.image);
+  const selectedAssets = sample(themedAssets, phase.pairCount);
+  const safeAssets = selectedAssets.length >= phase.pairCount
+    ? selectedAssets
+    : [
+        ...selectedAssets,
+        ...sample(
+          ALL_MEMORY_ASSETS.filter((item) => !selectedAssets.some((selected) => selected.image === item.image)),
+          phase.pairCount - selectedAssets.length,
+        ),
+      ];
+
+  if (safeAssets.length === phase.pairCount) {
     return sample(
-      selectedAssets.flatMap((item, index) => [
+      safeAssets.flatMap((item, index) => [
         { id: `${phase.id}-${index}-a`, label: item.label, image: item.image, matched: false, revealed: false },
         { id: `${phase.id}-${index}-b`, label: item.label, image: item.image, matched: false, revealed: false },
       ]),
@@ -386,7 +409,7 @@ const buildMemoryDeck = (phase: MemoryPhase): MemoryCard[] => {
     );
   }
 
-  const selected = sample(memoryThemePools[phase.theme], phase.pairCount);
+  const selected = sample(uniqueBy(memoryThemePools[phase.theme], (emoji) => emoji), phase.pairCount);
   return sample(
     selected.flatMap((emoji, index) => [
       { id: `${emoji}-${index}-a`, label: `Carta ${index + 1}`, emoji, matched: false, revealed: false },
@@ -401,6 +424,8 @@ const MemoryGame = ({ phase, onComplete }: { phase: MemoryPhase; onComplete: (re
   const [openIds, setOpenIds] = useState<string[]>([]);
   const [moves, setMoves] = useState(0);
   const [locked, setLocked] = useState(false);
+  const columns = cards.length <= 8 ? 4 : 4;
+  const rows = Math.ceil(cards.length / columns);
 
   useEffect(() => {
     setCards(buildMemoryDeck(phase));
@@ -443,24 +468,41 @@ const MemoryGame = ({ phase, onComplete }: { phase: MemoryPhase; onComplete: (re
   };
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[280px_1fr]">
-      <div className="rounded-[2rem] bg-[linear-gradient(180deg,#eff6ff,#fdf2f8)] p-5 shadow-inner">
-        <div className="text-sm font-black uppercase tracking-[0.22em] text-indigo-500">Memória</div>
-        <h3 className="mt-3 text-2xl font-black text-slate-950">{phase.title}</h3>
+    <div className="grid h-[calc(100dvh-11rem)] min-h-[540px] gap-4 xl:grid-cols-[220px_1fr]">
+      <div className="flex flex-col rounded-[2rem] bg-[linear-gradient(180deg,#eff6ff,#fdf2f8)] p-4 shadow-inner xl:p-5">
+        <div className="text-xs font-black uppercase tracking-[0.22em] text-indigo-500">Memória</div>
+        <h3 className="mt-2 text-2xl font-black text-slate-950">{phase.title}</h3>
         <p className="mt-2 text-sm text-slate-700">{phase.description}</p>
-        <div className="mt-5 rounded-[1.6rem] bg-white/85 p-4 shadow-sm">
-          <div className="text-xs font-black uppercase tracking-[0.2em] text-slate-500">Meta da fase</div>
-          <div className="mt-2 text-lg font-black text-slate-950">Encontre todos os pares</div>
-          <div className="mt-2 text-sm text-slate-600">Movimentos: <span className="font-black text-indigo-700">{moves}</span></div>
-          <div className="text-sm text-slate-600">Recompensa: <span className="font-black text-fuchsia-600">{phase.reward}</span></div>
+        <div className="mt-4 grid gap-3 rounded-[1.6rem] bg-white/85 p-4 shadow-sm">
+          <div>
+            <div className="text-[11px] font-black uppercase tracking-[0.18em] text-slate-500">Meta da fase</div>
+            <div className="mt-1 text-lg font-black text-slate-950">Encontre todos os pares</div>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <div className="rounded-2xl bg-indigo-50 px-3 py-2">
+              <div className="text-[11px] font-black uppercase tracking-[0.16em] text-indigo-500">Pares</div>
+              <div className="mt-1 text-2xl font-black text-slate-950">{phase.pairCount}</div>
+            </div>
+            <div className="rounded-2xl bg-fuchsia-50 px-3 py-2">
+              <div className="text-[11px] font-black uppercase tracking-[0.16em] text-fuchsia-500">Movimentos</div>
+              <div className="mt-1 text-2xl font-black text-slate-950">{moves}</div>
+            </div>
+          </div>
+          <div className="rounded-2xl bg-amber-50 px-3 py-3">
+            <div className="text-[11px] font-black uppercase tracking-[0.16em] text-amber-600">Recompensa</div>
+            <div className="mt-1 text-base font-black text-slate-950">{phase.reward}</div>
+          </div>
+        </div>
+        <div className="mt-auto rounded-[1.4rem] bg-slate-950 px-4 py-3 text-sm font-semibold text-white/85">
+          Cada partida usa apenas imagens diferentes, sem repetir desenhos no mesmo tabuleiro.
         </div>
       </div>
-      <div className="rounded-[2rem] bg-[linear-gradient(180deg,rgba(91,33,182,0.16),rgba(56,189,248,0.12))] p-4 md:p-6">
-        <div className="mb-4 flex items-center justify-between gap-4 rounded-[1.5rem] bg-white/80 px-4 py-3">
+      <div className="flex min-h-0 flex-col rounded-[2rem] bg-[linear-gradient(180deg,rgba(91,33,182,0.16),rgba(56,189,248,0.12))] p-4 md:p-5">
+        <div className="mb-3 flex items-center justify-between gap-4 rounded-[1.5rem] bg-white/80 px-4 py-3">
           <div className="text-sm font-black uppercase tracking-[0.2em] text-indigo-500">Fase ativa</div>
-          <div className="text-sm font-semibold text-slate-700">Pares: {phase.pairCount}</div>
+          <div className="text-sm font-semibold text-slate-700">{cards.length} cartas · {rows} linhas</div>
         </div>
-        <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-4">
+        <div className="grid min-h-0 flex-1 gap-3" style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))`, gridTemplateRows: `repeat(${rows}, minmax(0, 1fr))` }}>
           {cards.map((card) => {
             const visible = card.matched || card.revealed;
             return (
@@ -468,24 +510,24 @@ const MemoryGame = ({ phase, onComplete }: { phase: MemoryPhase; onComplete: (re
                 key={card.id}
                 type="button"
                 onClick={() => revealCard(card.id)}
-                className={`group aspect-square rounded-[1.4rem] border-2 shadow-sm transition-transform duration-200 hover:scale-[1.02] ${visible ? 'border-yellow-300 bg-white' : 'border-white/40 bg-[linear-gradient(180deg,#8b5cf6,#6366f1)]'}`}
+                className={`group min-h-0 overflow-hidden rounded-[1.25rem] border-2 shadow-sm transition-transform duration-200 hover:scale-[1.01] ${visible ? 'border-yellow-300 bg-white' : 'border-white/40 bg-[linear-gradient(180deg,#8b5cf6,#6366f1)]'}`}
               >
-                <div className={`relative flex h-full w-full items-center justify-center overflow-hidden rounded-[1.1rem] ${visible ? 'bg-white' : 'bg-[radial-gradient(circle_at_top,#fbcfe8,transparent_40%),linear-gradient(145deg,#7c3aed,#ec4899)]'}`}>
+                <div className={`relative flex h-full w-full items-center justify-center overflow-hidden rounded-[1rem] ${visible ? 'bg-white' : 'bg-[radial-gradient(circle_at_top,#fbcfe8,transparent_40%),linear-gradient(145deg,#7c3aed,#ec4899)]'}`}>
                   {visible ? (
                     card.image ? (
                       <>
-                        <img src={card.image} alt={card.label} className="h-full w-full object-cover" />
-                        <div className="absolute inset-x-2 bottom-2 rounded-full bg-white/90 px-2 py-1 text-center text-[11px] font-black text-slate-700 shadow-sm">
+                        <img src={card.image} alt={card.label} className="h-full w-full object-contain bg-white p-2" />
+                        <div className="absolute inset-x-1 bottom-1 rounded-full bg-white/92 px-2 py-1 text-center text-[10px] font-black text-slate-700 shadow-sm md:text-[11px]">
                           {card.label}
                         </div>
                       </>
                     ) : (
-                      <span className="text-4xl">{card.emoji}</span>
+                      <span className="text-3xl md:text-4xl">{card.emoji}</span>
                     )
                   ) : (
                     <div className="flex h-full w-full flex-col items-center justify-center text-white">
-                      <div className="text-4xl drop-shadow">✨</div>
-                      <div className="mt-1 text-[10px] font-black uppercase tracking-[0.22em] text-white/85">Memória</div>
+                      <div className="text-2xl drop-shadow md:text-3xl">✨</div>
+                      <div className="mt-1 text-[9px] font-black uppercase tracking-[0.18em] text-white/85 md:text-[10px]">Memória</div>
                     </div>
                   )}
                 </div>
