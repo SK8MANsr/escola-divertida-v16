@@ -520,9 +520,14 @@ const MemoryGame = ({ phase, onComplete }: { phase: MemoryPhase; onComplete: (re
                       <span className="text-2xl md:text-3xl">{card.emoji}</span>
                     )
                   ) : (
-                    <div className="flex h-full w-full flex-col items-center justify-center text-white">
-                      <div className="text-lg drop-shadow md:text-xl">✨</div>
-                      <div className="mt-1 text-[8px] font-black uppercase tracking-[0.18em] text-white/85 md:text-[9px]">Memória</div>
+                    <div className="memory-card-back relative flex h-full w-full flex-col items-center justify-center overflow-hidden rounded-[0.8rem] text-white">
+                      <div className="memory-card-back__glow" />
+                      <div className="memory-card-back__pattern" />
+                      <div className="relative z-10 flex h-full w-full flex-col items-center justify-center px-2 text-center">
+                        <div className="memory-card-back__badge">✨</div>
+                        <div className="mt-1 text-[8px] font-black uppercase tracking-[0.22em] text-white/90 md:text-[9px]">Estelinha</div>
+                        <div className="mt-1 text-[9px] font-black text-white drop-shadow md:text-[10px]">Toque para virar</div>
+                      </div>
                     </div>
                   )}
                 </div>

@@ -149,3 +149,52 @@ a:active {
     display: none;
   }
 }
+
+
+.memory-card-back {
+  background:
+    radial-gradient(circle at 50% 12%, rgba(255,255,255,.35), transparent 26%),
+    radial-gradient(circle at 18% 22%, rgba(255,255,255,.12), transparent 18%),
+    radial-gradient(circle at 82% 26%, rgba(255,255,255,.14), transparent 18%),
+    linear-gradient(145deg, #7c3aed 0%, #8b5cf6 28%, #a855f7 52%, #ec4899 100%);
+}
+
+.memory-card-back__glow {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at center, rgba(255,255,255,.12), transparent 52%);
+  mix-blend-mode: screen;
+}
+
+.memory-card-back__pattern {
+  position: absolute;
+  inset: 0;
+  background-image:
+    radial-gradient(circle at 16% 22%, rgba(255,255,255,.55) 0 1px, transparent 2px),
+    radial-gradient(circle at 34% 72%, rgba(255,255,255,.4) 0 1px, transparent 2px),
+    radial-gradient(circle at 62% 20%, rgba(255,255,255,.5) 0 1px, transparent 2px),
+    radial-gradient(circle at 80% 68%, rgba(255,255,255,.45) 0 1px, transparent 2px),
+    radial-gradient(circle at 52% 48%, rgba(255,255,255,.22) 0 2px, transparent 4px);
+  opacity: .9;
+}
+
+.memory-card-back__badge {
+  display: inline-flex;
+  height: 44px;
+  width: 44px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  border: 2px solid rgba(255,255,255,.55);
+  background: linear-gradient(180deg, rgba(255,255,255,.35), rgba(255,255,255,.12));
+  box-shadow: 0 10px 24px rgba(49,46,129,.28), inset 0 2px 8px rgba(255,255,255,.24);
+  font-size: 22px;
+}
+
+@media (max-width: 768px) {
+  .memory-card-back__badge {
+    height: 34px;
+    width: 34px;
+    font-size: 18px;
+  }
+}
