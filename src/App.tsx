@@ -1,1902 +1,1170 @@
 import { useEffect, useMemo, useState } from 'react';
-import type { ElementType } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
 import {
-  AudioLines,
-  BookOpen,
-  CalendarDays,
-  ChevronLeft,
-  ChevronRight,
-  Gamepad2,
+  Flame,
   Gift,
+  Heart,
   Home,
-  Layers3,
   Map,
   Menu,
   Play,
-  ShieldCheck,
-  UserRound,
+  Settings,
+  Sparkles,
+  Star,
   Users,
   WandSparkles,
   X,
 } from 'lucide-react';
-import { AnimatePresence, motion } from 'framer-motion';
-import { cn } from './utils/cn';
-import { dynamicContentEnabled, fetchDynamicCatalog } from './lib/dynamicContent';
-import { fetchInfrastructureHealth } from './lib/infraHealth';
-import { getOrCreateDeviceId, safeReadStorage, writeStorage } from './lib/storage';
 import {
-  ageTracks,
   alphabetPools,
-  avatarOptions,
-  buddyOptions,
   colorBuckets,
   colorItems,
-  contentPacks as fallbackPacks,
-  faqData,
+  contentPacks as fallbackContentPacks,
   memoryThemePools,
-  methodologyCards,
-  parentWeeklyTracks as fallbackTracks,
+  parentWeeklyTracks as fallbackParentWeeklyTracks,
   phaseMap,
-  profileAccentPalette,
-  rewardMilestones,
-  seasonalEvents as fallbackEvents,
+  seasonalEvents as fallbackSeasonalEvents,
   shapeLibrary,
   worlds,
   worldPhaseOrder,
+  type AlphabetPhase,
+  type ChildProfile,
+  type ColorsPhase,
+  type ContentPack,
+  type GameKey,
+  type GamePhase,
+  type MathPhase,
+  type MazePhase,
+  type MemoryPhase,
+  type ParentWeeklyTrack,
+  type PuzzlePhase,
+  type SeasonalEvent,
+  type ShapePhase,
 } from './data/gameContent';
-import type {
-  AlphabetPhase,
-  ChildProfile,
-  ColorBucketId,
-  ColorsPhase,
-  ContentPack,
-  GameKey,
-  GamePhase,
-  MathPhase,
-  MazePhase,
-  MemoryPhase,
-  ParentWeeklyTrack,
-  PuzzlePhase,
-  SeasonalEvent,
-  ShapePhase,
-} from './data/gameContent';
-import type { InfrastructureHealthPayload } from './lib/infraHealth';
+import { dynamicContentEnabled, fetchDynamicCatalog } from './lib/dynamicContent';
+import { safeReadStorage, writeStorage } from './lib/storage';
+import homeArt from './assets/home-ref.jpeg';
+import mapArt from './assets/map-ref.jpeg';
+import gameArt from './assets/game-ref.jpeg';
+import parentsArt from './assets/parents-ref.jpeg';
+import rewardsArt from './assets/rewards-ref.jpeg';
 
-type PanelKey = 'home' | 'packs' | 'events' | 'tracks' | 'map' | 'play' | 'rewards' | 'parents' | 'profile';
+type PanelKey = 'home' | 'play' | 'map' | 'packs' | 'events' | 'rewards' | 'parents' | 'settings';
 
-type MiniProgress = {
-  plays: number;
-  bestStars: number;
-  bestScore: number;
-  completed: boolean;
-  updatedAt: string;
+type PlayerProgress = {
+  stars: number;
+  gems: number;
+  streak: number;
+  hearts: number;
+  rewardsOpened: number;
+  lastWorld: GameKey;
+  completedPhases: string[];
+  dailyMinutes: number;
+  favoriteWorld: GameKey;
 };
 
-type ProgressMap = Record<string, MiniProgress>;
-
-type Toast = {
-  id: number;
-  tone: 'success' | 'info' | 'warning';
-  title: string;
-  text: string;
+type GameResult = {
+  stars: number;
+  bonusText: string;
 };
 
-type PackCard = ContentPack & {
-  colorA: string;
-  colorB: string;
-  illustration: string;
-};
-
-type ViewState = {
-  panel: PanelKey;
-  title: string;
-  subtitle: string;
-};
-
-type GameView = {
-  phaseId: string;
-  sourceLabel: string;
-};
-
-type NavItem = {
-  key: PanelKey;
-  label: string;
-  shortLabel: string;
-  icon: ElementType;
-  accent: string;
-  description: string;
+type MemoryCard = {
+  id: string;
+  emoji: string;
+  matched: boolean;
+  revealed: boolean;
 };
 
 const STORAGE_KEYS = {
-  profiles: 'edv16-profiles-ui',
-  progress: 'edv16-progress-ui',
-  activeProfileId: 'edv16-active-profile-ui',
-  sound: 'edv16-sound-ui',
-  legacyProfiles: 'escola-v6-profiles',
-  legacyProgress: 'escola-v6-progress',
-  legacyActive: 'escola-v6-active-profile',
+  profiles: 'edv-v8-profiles',
+  activeProfileId: 'edv-v8-active-profile',
+  progressMap: 'edv-v8-progress-map',
+  settings: 'edv-v8-settings',
 };
 
-const packGradientPool = [
-  ['#FF8FB1', '#FFC56E'],
-  ['#6EE7F9', '#7C83FD'],
-  ['#7EE081', '#C6F36A'],
-  ['#C79BFF', '#FF9CE6'],
-  ['#6EE7B7', '#7DD3FC'],
-  ['#FDBA74', '#FB7185'],
-  ['#A5B4FC', '#F9A8D4'],
-  ['#93C5FD', '#5EEAD4'],
+const defaultProfiles: ChildProfile[] = [
+  {
+    id: 'profile-pedro',
+    name: 'Pedro',
+    age: 6,
+    accent: 'from-sky-500 via-indigo-500 to-fuchsia-500',
+    avatar: '🧒',
+    buddy: '⭐',
+    mascotTheme: 'estelinha',
+    createdAt: new Date().toISOString(),
+  },
 ];
 
-const packIllustrations = ['🦊', '🚀', '🧠', '🌈', '🐠', '🐮', '🏰', '🧩', '❄️', '🎪', '📚', '🏆'];
+const defaultProgress = (): PlayerProgress => ({
+  stars: 1850,
+  gems: 48,
+  streak: 7,
+  hearts: 3,
+  rewardsOpened: 3,
+  lastWorld: 'alphabet',
+  completedPhases: ['memory-1', 'alphabet-1', 'math-1', 'shape-1', 'colors-1'],
+  dailyMinutes: 85,
+  favoriteWorld: 'memory',
+});
 
-const worldIllustrations: Record<GameKey, string> = {
-  memory: '🦉',
+const panelItems: Array<{ key: PanelKey; label: string; icon: typeof Home; tone: string }> = [
+  { key: 'home', label: 'Início', icon: Home, tone: 'from-fuchsia-500 to-violet-500' },
+  { key: 'play', label: 'Jogar', icon: Play, tone: 'from-lime-500 to-emerald-500' },
+  { key: 'map', label: 'Mapa', icon: Map, tone: 'from-sky-500 to-cyan-500' },
+  { key: 'packs', label: 'Packs', icon: WandSparkles, tone: 'from-orange-500 to-pink-500' },
+  { key: 'events', label: 'Eventos', icon: Sparkles, tone: 'from-amber-500 to-orange-500' },
+  { key: 'rewards', label: 'Recompensas', icon: Gift, tone: 'from-violet-500 to-fuchsia-500' },
+  { key: 'parents', label: 'Pais', icon: Users, tone: 'from-indigo-500 to-sky-500' },
+  { key: 'settings', label: 'Config.', icon: Settings, tone: 'from-slate-500 to-slate-700' },
+];
+
+const worldArtwork: Record<GameKey, string> = {
+  memory: gameArt,
+  alphabet: homeArt,
+  math: mapArt,
+  shape: homeArt,
+  colors: mapArt,
+  maze: gameArt,
+  puzzle: rewardsArt,
+};
+
+const worldEmoji: Record<GameKey, string> = {
+  memory: '🧠',
   alphabet: '🔤',
   math: '🔢',
-  shape: '🔷',
-  colors: '🎨',
-  maze: '🧭',
-  puzzle: '🧩',
+  shape: '🧩',
+  colors: '🌈',
+  maze: '🌀',
+  puzzle: '🖼️',
 };
 
-const worldAccent: Record<GameKey, string> = {
-  memory: 'from-amber-300 to-pink-300',
-  alphabet: 'from-yellow-300 to-orange-300',
-  math: 'from-sky-300 to-cyan-300',
-  shape: 'from-fuchsia-300 to-rose-300',
-  colors: 'from-emerald-300 to-lime-300',
-  maze: 'from-teal-300 to-emerald-300',
-  puzzle: 'from-violet-300 to-fuchsia-300',
-};
+const cap = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
 
-const navItems: NavItem[] = [
-  { key: 'home', label: 'Início mágico', shortLabel: 'Início', icon: Home, accent: 'from-pink-400 to-orange-300', description: 'Tela principal com atalhos grandes e mascotes.' },
-  { key: 'packs', label: 'Packs encantados', shortLabel: 'Packs', icon: Layers3, accent: 'from-violet-400 to-pink-400', description: 'Coleções prontas organizadas por tema e idade.' },
-  { key: 'events', label: 'Eventos do dia', shortLabel: 'Eventos', icon: CalendarDays, accent: 'from-amber-400 to-orange-400', description: 'Campanhas sazonais com recompensas especiais.' },
-  { key: 'tracks', label: 'Trilhas para pais', shortLabel: 'Trilhas', icon: BookOpen, accent: 'from-emerald-400 to-teal-400', description: 'Planos simples para acompanhar a rotina.' },
-  { key: 'map', label: 'Mapa dos mundos', shortLabel: 'Mapa', icon: Map, accent: 'from-sky-400 to-indigo-400', description: 'Seleção de mundos e fases com navegação visual.' },
-  { key: 'play', label: 'Jogar agora', shortLabel: 'Jogar', icon: Gamepad2, accent: 'from-fuchsia-400 to-violet-400', description: 'Entrada rápida para partidas simples e divertidas.' },
-  { key: 'rewards', label: 'Tesouro de estrelas', shortLabel: 'Tesouro', icon: Gift, accent: 'from-yellow-400 to-amber-400', description: 'Recompensas, metas e progresso visível.' },
-  { key: 'parents', label: 'Painel da família', shortLabel: 'Pais', icon: Users, accent: 'from-cyan-400 to-blue-400', description: 'Resumo amigável para adultos sem bagunça.' },
-  { key: 'profile', label: 'Meu personagem', shortLabel: 'Perfil', icon: UserRound, accent: 'from-rose-400 to-fuchsia-400', description: 'Avatar, faixa etária e preferências da criança.' },
-];
-
-const panelMeta: Record<PanelKey, ViewState> = {
-  home: { panel: 'home', title: 'Bem-vindo ao mundo da diversão', subtitle: 'Escolha grande, navegação simples e jogos que abrem em janelas flutuantes.' },
-  packs: { panel: 'packs', title: 'Packs encantados', subtitle: 'Coleções prontas para começar sem confusão.' },
-  events: { panel: 'events', title: 'Eventos especiais', subtitle: 'Campanhas com brilho, objetivos claros e prêmio visível.' },
-  tracks: { panel: 'tracks', title: 'Trilhas da família', subtitle: 'Planos curtos para brincar e aprender com leveza.' },
-  map: { panel: 'map', title: 'Mapa dos mundos', subtitle: 'Cada mundo tem sua própria aventura, com fases grandes e botões fáceis.' },
-  play: { panel: 'play', title: 'Jogar agora', subtitle: 'Entre rápido em um pack, em um mundo ou na última fase aberta.' },
-  rewards: { panel: 'rewards', title: 'Tesouro de estrelas', subtitle: 'Veja medalhas, metas e recompensas em um painel claro.' },
-  parents: { panel: 'parents', title: 'Painel da família', subtitle: 'Resumo prático para adultos sem linguagem técnica cansativa.' },
-  profile: { panel: 'profile', title: 'Meu personagem', subtitle: 'Troque avatar, amigo e idade com um visual mais divertido.' },
-};
-
-const createProfile = (index = 0): ChildProfile => ({
-  id: `perfil-${Date.now()}`,
-  name: 'Pequeno Explorador',
-  age: 5,
-  accent: profileAccentPalette[index % profileAccentPalette.length] ?? 'from-pink-400 to-rose-400',
-  avatar: avatarOptions[index % avatarOptions.length]?.emoji ?? '🦊',
-  buddy: buddyOptions[index % buddyOptions.length]?.emoji ?? '⭐',
-  mascotTheme: 'classic',
-  createdAt: new Date().toISOString(),
-});
-
-const createProgress = (): MiniProgress => ({
-  plays: 0,
-  bestStars: 0,
-  bestScore: 0,
-  completed: false,
-  updatedAt: new Date().toISOString(),
-});
-
-const normalizePacks = (packs: ContentPack[]): PackCard[] =>
-  packs.map((pack, index) => ({
-    ...pack,
-    colorA: packGradientPool[index % packGradientPool.length][0],
-    colorB: packGradientPool[index % packGradientPool.length][1],
-    illustration: packIllustrations[index % packIllustrations.length],
-  }));
-
-const packToGameKeys = (pack: ContentPack): GameKey[] => {
-  const set = new Set<GameKey>();
-  pack.phaseIds.forEach((phaseId) => {
-    const phase = phaseMap[phaseId];
-    if (phase) set.add(phase.game);
-  });
-  return Array.from(set);
-};
-
-const sumStars = (progressMap: ProgressMap) => Object.values(progressMap).reduce((acc, item) => acc + item.bestStars, 0);
-
-const sumCompleted = (progressMap: ProgressMap) => Object.values(progressMap).filter((item) => item.completed).length;
-
-const mapHashToPanel = (hash: string): PanelKey => {
-  const clean = hash.replace('#', '').toLowerCase();
-  if (['packs'].includes(clean)) return 'packs';
-  if (['eventos', 'events'].includes(clean)) return 'events';
-  if (['trilhas', 'tracks'].includes(clean)) return 'tracks';
-  if (['mapa', 'map'].includes(clean)) return 'map';
-  if (['jogar', 'play'].includes(clean)) return 'play';
-  if (['recompensas', 'rewards'].includes(clean)) return 'rewards';
-  if (['pais', 'parents'].includes(clean)) return 'parents';
-  if (['perfil', 'profile'].includes(clean)) return 'profile';
-  return 'home';
-};
-
-const panelToHash = (panel: PanelKey) => {
-  if (panel === 'home') return '';
-  const table: Record<Exclude<PanelKey, 'home'>, string> = {
-    packs: 'packs',
-    events: 'eventos',
-    tracks: 'trilhas',
-    map: 'mapa',
-    play: 'jogar',
-    rewards: 'recompensas',
-    parents: 'pais',
-    profile: 'perfil',
-  };
-  return `#${table[panel as Exclude<PanelKey, 'home'>]}`;
-};
-
-const sampleFrom = <T,>(list: T[], count: number) => {
-  const clone = [...list];
+const sample = <T,>(items: T[], total: number) => {
+  const clone = [...items];
   for (let i = clone.length - 1; i > 0; i -= 1) {
     const j = Math.floor(Math.random() * (i + 1));
     [clone[i], clone[j]] = [clone[j], clone[i]];
   }
-  return clone.slice(0, count);
+  return clone.slice(0, total);
 };
 
-const ensureProgressShape = (phaseId: string, progressMap: ProgressMap): MiniProgress => progressMap[phaseId] ?? createProgress();
+const getTodayPhrase = () => {
+  const hour = new Date().getHours();
+  if (hour < 12) return 'Bom dia';
+  if (hour < 18) return 'Boa tarde';
+  return 'Boa noite';
+};
 
-const loadLegacyProgress = (): ProgressMap => {
-  const modern = safeReadStorage<ProgressMap>(STORAGE_KEYS.progress, {});
-  if (Object.keys(modern).length) return modern;
-  const legacyRaw = safeReadStorage<Record<string, any>>(STORAGE_KEYS.legacyProgress, {});
-  const firstProfile = Object.values(legacyRaw ?? {})[0] as any;
-  if (!firstProfile?.games) return {};
-  const normalized: ProgressMap = {};
-  (Object.keys(firstProfile.games) as GameKey[]).forEach((game) => {
-    const phases = firstProfile.games?.[game]?.phases ?? {};
-    Object.entries<any>(phases).forEach(([phaseId, item]) => {
-      normalized[phaseId] = {
-        plays: Number(item?.plays ?? 0),
-        bestStars: Number(item?.bestStars ?? 0),
-        bestScore: Number(item?.bestScore ?? 0),
-        completed: Number(item?.completions ?? 0) > 0 || Number(item?.bestStars ?? 0) > 0,
-        updatedAt: new Date().toISOString(),
-      };
-    });
+const getStarsForRatio = (ratio: number) => {
+  if (ratio >= 0.9) return 3;
+  if (ratio >= 0.65) return 2;
+  return 1;
+};
+
+const formatWorldName = (game: GameKey) => worlds.find((world) => world.game === game)?.shortTitle ?? game;
+
+const GlassPanel = ({
+  title,
+  subtitle,
+  badge,
+  children,
+  art,
+  actions,
+}: {
+  title: string;
+  subtitle: string;
+  badge: string;
+  children: React.ReactNode;
+  art?: string;
+  actions?: React.ReactNode;
+}) => (
+  <motion.section
+    key={title}
+    initial={{ opacity: 0, y: 18, scale: 0.98 }}
+    animate={{ opacity: 1, y: 0, scale: 1 }}
+    exit={{ opacity: 0, y: 18, scale: 0.98 }}
+    transition={{ duration: 0.22 }}
+    className="relative overflow-hidden rounded-[2.5rem] border border-white/60 bg-white/72 p-5 shadow-[0_30px_90px_rgba(34,14,79,0.18)] backdrop-blur-2xl md:p-7"
+  >
+    {art && <img src={art} alt="Referência visual" className="pointer-events-none absolute inset-0 h-full w-full object-cover opacity-[0.18]" />}
+    <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.85),transparent_40%),radial-gradient(circle_at_bottom_right,rgba(99,102,241,0.16),transparent_28%)]" />
+    <div className="relative z-10">
+      <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+        <div>
+          <div className="inline-flex rounded-full bg-white/75 px-3 py-1 text-[11px] font-black uppercase tracking-[0.22em] text-indigo-700 shadow-sm">{badge}</div>
+          <h2 className="mt-3 text-3xl font-black tracking-tight text-slate-950 md:text-[2.3rem]">{title}</h2>
+          <p className="mt-2 max-w-3xl text-sm leading-relaxed text-slate-700 md:text-base">{subtitle}</p>
+        </div>
+        {actions}
+      </div>
+      <div className="mt-6">{children}</div>
+    </div>
+  </motion.section>
+);
+
+const ModalShell = ({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) => (
+  <motion.div
+    initial={{ opacity: 0 }}
+    animate={{ opacity: 1 }}
+    exit={{ opacity: 0 }}
+    className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-3 backdrop-blur-sm"
+  >
+    <motion.div
+      initial={{ opacity: 0, scale: 0.94, y: 16 }}
+      animate={{ opacity: 1, scale: 1, y: 0 }}
+      exit={{ opacity: 0, scale: 0.94, y: 16 }}
+      className="relative flex max-h-[92vh] w-full max-w-6xl flex-col overflow-hidden rounded-[2.3rem] border border-white/50 bg-[linear-gradient(180deg,rgba(255,255,255,0.95),rgba(243,244,255,0.96))] shadow-[0_40px_120px_rgba(15,23,42,0.35)]"
+    >
+      <div className="flex items-center justify-between border-b border-indigo-100 px-5 py-4 md:px-7">
+        <div>
+          <div className="text-xs font-black uppercase tracking-[0.2em] text-indigo-500">Janela interativa</div>
+          <div className="mt-1 text-2xl font-black text-slate-950">{title}</div>
+        </div>
+        <button type="button" onClick={onClose} className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-slate-900 text-white shadow-lg">
+          <X className="h-5 w-5" />
+        </button>
+      </div>
+      <div className="overflow-auto p-4 md:p-6">{children}</div>
+    </motion.div>
+  </motion.div>
+);
+
+const MemoryGame = ({ phase, onComplete }: { phase: MemoryPhase; onComplete: (result: GameResult) => void }) => {
+  const [cards, setCards] = useState<MemoryCard[]>(() => {
+    const selected = sample(memoryThemePools[phase.theme], phase.pairCount);
+    return sample(
+      selected.flatMap((emoji, index) => [
+        { id: `${emoji}-${index}-a`, emoji, matched: false, revealed: false },
+        { id: `${emoji}-${index}-b`, emoji, matched: false, revealed: false },
+      ]),
+      phase.pairCount * 2,
+    );
   });
-  return normalized;
+  const [openIds, setOpenIds] = useState<string[]>([]);
+  const [moves, setMoves] = useState(0);
+  const [locked, setLocked] = useState(false);
+
+  useEffect(() => {
+    if (cards.length > 0 && cards.every((card) => card.matched)) {
+      const ratio = phase.movesFor2Stars / Math.max(moves, 1);
+      onComplete({ stars: getStarsForRatio(Math.min(1.1, ratio)), bonusText: `Você encontrou ${phase.pairCount} pares!` });
+    }
+  }, [cards, moves, onComplete, phase.movesFor2Stars, phase.pairCount]);
+
+  const revealCard = (cardId: string) => {
+    if (locked) return;
+    const card = cards.find((item) => item.id === cardId);
+    if (!card || card.matched || openIds.includes(cardId)) return;
+    const nextOpen = [...openIds, cardId];
+    setCards((current) => current.map((item) => (item.id === cardId ? { ...item, revealed: true } : item)));
+    if (nextOpen.length < 2) {
+      setOpenIds(nextOpen);
+      return;
+    }
+    setLocked(true);
+    setMoves((value) => value + 1);
+    const first = cards.find((item) => item.id === nextOpen[0]);
+    const second = cards.find((item) => item.id === cardId);
+    window.setTimeout(() => {
+      const matched = first?.emoji === second?.emoji;
+      setCards((current) => current.map((item) => {
+        if (!nextOpen.includes(item.id)) return item;
+        if (matched) return { ...item, matched: true, revealed: true };
+        return { ...item, revealed: false };
+      }));
+      setOpenIds([]);
+      setLocked(false);
+    }, 650);
+  };
+
+  return (
+    <div className="grid gap-6 lg:grid-cols-[280px_1fr]">
+      <div className="rounded-[2rem] bg-[linear-gradient(180deg,#eff6ff,#fdf2f8)] p-5 shadow-inner">
+        <div className="text-sm font-black uppercase tracking-[0.22em] text-indigo-500">Memória</div>
+        <h3 className="mt-3 text-2xl font-black text-slate-950">{phase.title}</h3>
+        <p className="mt-2 text-sm text-slate-700">{phase.description}</p>
+        <div className="mt-5 rounded-[1.6rem] bg-white/85 p-4 shadow-sm">
+          <div className="text-xs font-black uppercase tracking-[0.2em] text-slate-500">Meta da fase</div>
+          <div className="mt-2 text-lg font-black text-slate-950">Encontre todos os pares</div>
+          <div className="mt-2 text-sm text-slate-600">Movimentos: <span className="font-black text-indigo-700">{moves}</span></div>
+          <div className="text-sm text-slate-600">Recompensa: <span className="font-black text-fuchsia-600">{phase.reward}</span></div>
+        </div>
+      </div>
+      <div className="rounded-[2rem] bg-[linear-gradient(180deg,rgba(91,33,182,0.16),rgba(56,189,248,0.12))] p-4 md:p-6">
+        <div className="mb-4 flex items-center justify-between gap-4 rounded-[1.5rem] bg-white/80 px-4 py-3">
+          <div className="text-sm font-black uppercase tracking-[0.2em] text-indigo-500">Fase ativa</div>
+          <div className="text-sm font-semibold text-slate-700">Pares: {phase.pairCount}</div>
+        </div>
+        <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-4 lg:grid-cols-4 xl:grid-cols-4">
+          {cards.map((card) => (
+            <button
+              key={card.id}
+              type="button"
+              onClick={() => revealCard(card.id)}
+              className={`aspect-square rounded-[1.4rem] border-2 text-4xl shadow-sm transition ${card.matched || card.revealed ? 'border-yellow-300 bg-white' : 'border-white/40 bg-[linear-gradient(180deg,#8b5cf6,#6366f1)] text-transparent'}`}
+            >
+              <span className={card.matched || card.revealed ? 'opacity-100' : 'opacity-0'}>{card.emoji}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
 };
 
-const worldCompletionCount = (world: GameKey, progressMap: ProgressMap) =>
-  worldPhaseOrder[world].filter((phaseId) => progressMap[phaseId]?.completed).length;
+const AlphabetGame = ({ phase, onComplete }: { phase: AlphabetPhase; onComplete: (result: GameResult) => void }) => {
+  const questions = useMemo(() => sample(alphabetPools[phase.poolTag], phase.questionCount), [phase.poolTag, phase.questionCount]);
+  const [index, setIndex] = useState(0);
+  const [correct, setCorrect] = useState(0);
+  const current = questions[index];
 
-const worldStarCount = (world: GameKey, progressMap: ProgressMap) =>
-  worldPhaseOrder[world].reduce((acc, phaseId) => acc + (progressMap[phaseId]?.bestStars ?? 0), 0);
+  const choose = (option: string) => {
+    const isCorrect = option === current.letter;
+    const nextCorrect = correct + (isCorrect ? 1 : 0);
+    if (index === questions.length - 1) {
+      onComplete({ stars: getStarsForRatio(nextCorrect / Math.max(1, questions.length)), bonusText: `Você acertou ${nextCorrect} de ${questions.length}.` });
+      return;
+    }
+    setCorrect(nextCorrect);
+    setIndex((value) => value + 1);
+  };
 
-const nextUnlockedPhaseId = (world: GameKey, progressMap: ProgressMap) => {
-  const ids = worldPhaseOrder[world];
-  for (let i = 0; i < ids.length; i += 1) {
-    if (i === 0) return ids[0];
-    if (progressMap[ids[i - 1]]?.completed && !progressMap[ids[i]]?.completed) return ids[i];
+  return (
+    <div className="grid gap-6 lg:grid-cols-[280px_1fr]">
+      <div className="rounded-[2rem] bg-[linear-gradient(180deg,#eff6ff,#ecfeff)] p-5 shadow-inner">
+        <div className="text-sm font-black uppercase tracking-[0.22em] text-indigo-500">Cidade das letras</div>
+        <h3 className="mt-3 text-2xl font-black text-slate-950">{phase.title}</h3>
+        <p className="mt-2 text-sm text-slate-700">Escolha a letra inicial correta.</p>
+        <div className="mt-5 rounded-[1.6rem] bg-white/85 p-4 shadow-sm">
+          <div className="text-sm text-slate-600">Rodada {index + 1} / {questions.length}</div>
+          <div className="text-sm text-slate-600">Acertos: <span className="font-black text-indigo-700">{correct}</span></div>
+          <div className="mt-2 text-sm text-slate-600">Recompensa: <span className="font-black text-fuchsia-600">{phase.reward}</span></div>
+        </div>
+      </div>
+      <div className="rounded-[2rem] bg-[linear-gradient(180deg,rgba(59,130,246,0.12),rgba(244,114,182,0.12))] p-6">
+        <div className="rounded-[2rem] bg-white/85 p-6 shadow-sm">
+          <div className="text-center text-7xl">{current.emoji}</div>
+          <div className="mt-4 text-center text-3xl font-black text-slate-950">{current.word}</div>
+          <div className="mt-2 text-center text-sm font-semibold text-slate-600">Qual letra começa essa palavra?</div>
+          <div className="mt-6 grid gap-3 sm:grid-cols-3">
+            {current.options.map((option) => (
+              <button key={option} type="button" onClick={() => choose(option)} className="rounded-[1.4rem] bg-[linear-gradient(135deg,#4f46e5,#7c3aed)] px-4 py-5 text-3xl font-black text-white shadow-lg">{option}</button>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const buildMathQuestions = (phase: MathPhase) => Array.from({ length: phase.questionCount }, () => {
+  const a = Math.floor(Math.random() * phase.maxValue) + 1;
+  const b = Math.floor(Math.random() * phase.maxValue) + 1;
+  if (phase.mode === 'count') {
+    const correct = Math.floor(Math.random() * phase.maxValue) + 1;
+    return {
+      prompt: 'Quantos itens aparecem?',
+      visual: '⭐'.repeat(correct),
+      correct,
+      options: sample([correct, cap(correct + 1, 1, phase.maxValue + 3), cap(correct + 2, 1, phase.maxValue + 4), cap(correct - 1, 1, phase.maxValue)], 3),
+    };
   }
-  return ids.find((phaseId) => !progressMap[phaseId]?.completed) ?? ids[0];
+  if (phase.mode === 'add') {
+    const correct = a + b;
+    return { prompt: `${a} + ${b} = ?`, visual: `${'🍎'.repeat(a)} + ${'🍌'.repeat(b)}`, correct, options: sample([correct, correct + 1, Math.max(1, correct - 1), correct + 2], 3) };
+  }
+  if (phase.mode === 'subtract') {
+    const high = Math.max(a, b) + 1;
+    const low = Math.min(a, b);
+    const correct = high - low;
+    return { prompt: `${high} - ${low} = ?`, visual: `${'🟡'.repeat(high)}`, correct, options: sample([correct, correct + 1, Math.max(1, correct - 1), correct + 2], 3) };
+  }
+  const start = Math.floor(Math.random() * (phase.maxValue - 3)) + 1;
+  const correct = start + 3;
+  return { prompt: `${start}, ${start + 1}, ${start + 2}, ?`, visual: '🔢 continue a sequência', correct, options: sample([correct, correct + 1, Math.max(1, correct - 1), correct + 2], 3) };
+});
+
+const MathGame = ({ phase, onComplete }: { phase: MathPhase; onComplete: (result: GameResult) => void }) => {
+  const questions = useMemo(() => buildMathQuestions(phase), [phase]);
+  const [index, setIndex] = useState(0);
+  const [correct, setCorrect] = useState(0);
+  const current = questions[index];
+  const options = useMemo(() => sample(Array.from(new Set([...current.options, current.correct])), 3), [current.correct, current.options]);
+
+  const choose = (value: number) => {
+    const nextCorrect = correct + (value === current.correct ? 1 : 0);
+    if (index === questions.length - 1) {
+      onComplete({ stars: getStarsForRatio(nextCorrect / Math.max(1, questions.length)), bonusText: `Você completou ${questions.length} desafios.` });
+      return;
+    }
+    setCorrect(nextCorrect);
+    setIndex((state) => state + 1);
+  };
+
+  return (
+    <div className="grid gap-6 lg:grid-cols-[280px_1fr]">
+      <div className="rounded-[2rem] bg-[linear-gradient(180deg,#ecfeff,#eff6ff)] p-5 shadow-inner">
+        <div className="text-sm font-black uppercase tracking-[0.22em] text-cyan-600">Vale dos números</div>
+        <h3 className="mt-3 text-2xl font-black text-slate-950">{phase.title}</h3>
+        <p className="mt-2 text-sm text-slate-700">Desafios curtinhos com visual grande e fácil de entender.</p>
+        <div className="mt-5 rounded-[1.6rem] bg-white/85 p-4 shadow-sm">
+          <div className="text-sm text-slate-600">Rodada {index + 1} / {questions.length}</div>
+          <div className="text-sm text-slate-600">Acertos: <span className="font-black text-cyan-700">{correct}</span></div>
+        </div>
+      </div>
+      <div className="rounded-[2rem] bg-[linear-gradient(180deg,rgba(14,165,233,0.12),rgba(250,204,21,0.12))] p-6">
+        <div className="rounded-[2rem] bg-white/85 p-6 shadow-sm">
+          <div className="text-center text-sm font-black uppercase tracking-[0.18em] text-cyan-600">Pergunta atual</div>
+          <div className="mt-3 text-center text-4xl font-black text-slate-950">{current.prompt}</div>
+          <div className="mt-4 text-center text-4xl">{current.visual}</div>
+          <div className="mt-6 grid gap-3 sm:grid-cols-3">
+            {options.map((option) => (
+              <button key={option} type="button" onClick={() => choose(option)} className="rounded-[1.4rem] bg-[linear-gradient(135deg,#0ea5e9,#2563eb)] px-4 py-5 text-3xl font-black text-white shadow-lg">{option}</button>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 };
 
-const isPhaseUnlocked = (phaseId: string, progressMap: ProgressMap) => {
-  const phase = phaseMap[phaseId];
-  if (!phase) return false;
-  const ids = worldPhaseOrder[phase.game];
-  const index = ids.indexOf(phaseId);
-  if (index <= 0) return true;
-  return Boolean(progressMap[ids[index - 1]]?.completed);
+const ShapeGame = ({ phase, onComplete }: { phase: ShapePhase; onComplete: (result: GameResult) => void }) => {
+  const shapeSet = phase.shapeSet === 'basic' ? shapeLibrary.slice(0, 4) : shapeLibrary;
+  const rounds = useMemo(() => Array.from({ length: Math.min(6, phase.pieceCount) }, () => ({
+    target: sample(shapeSet, 1)[0],
+    options: sample(shapeSet, Math.min(4, shapeSet.length)),
+  })), [phase.pieceCount, shapeSet]);
+  const [index, setIndex] = useState(0);
+  const [correct, setCorrect] = useState(0);
+  const current = rounds[index];
+
+  const choose = (shapeId: string) => {
+    const nextCorrect = correct + (shapeId === current.target.id ? 1 : 0);
+    if (index === rounds.length - 1) {
+      onComplete({ stars: getStarsForRatio(nextCorrect / Math.max(1, rounds.length)), bonusText: `Você encaixou ${nextCorrect} formas certas.` });
+      return;
+    }
+    setCorrect(nextCorrect);
+    setIndex((state) => state + 1);
+  };
+
+  return (
+    <div className="grid gap-6 lg:grid-cols-[280px_1fr]">
+      <div className="rounded-[2rem] bg-[linear-gradient(180deg,#fdf2f8,#eef2ff)] p-5 shadow-inner">
+        <div className="text-sm font-black uppercase tracking-[0.22em] text-fuchsia-600">Ilha do encaixe</div>
+        <h3 className="mt-3 text-2xl font-black text-slate-950">{phase.title}</h3>
+        <p className="mt-2 text-sm text-slate-700">Toque na forma correta. Grande, simples e rápido para brincar.</p>
+      </div>
+      <div className="rounded-[2rem] bg-[linear-gradient(180deg,rgba(244,114,182,0.12),rgba(99,102,241,0.12))] p-6">
+        <div className="rounded-[2rem] bg-white/85 p-6 shadow-sm">
+          <div className="text-center text-sm font-black uppercase tracking-[0.2em] text-fuchsia-600">Rodada {index + 1}</div>
+          <div className="mt-4 text-center text-2xl font-black text-slate-950">Encontre: {current.target.label}</div>
+          <div className="mt-4 flex justify-center">
+            <div className="flex h-32 w-32 items-center justify-center rounded-[2rem] border-4 border-white bg-slate-50 text-5xl shadow-inner" style={{ color: current.target.color }}>
+              {current.target.id === 'circle' && <div className="h-16 w-16 rounded-full bg-current" />}
+              {current.target.id === 'square' && <div className="h-16 w-16 rounded-[1rem] bg-current" />}
+              {current.target.id === 'triangle' && <div style={{ width: 0, height: 0, borderLeft: '34px solid transparent', borderRight: '34px solid transparent', borderBottom: `60px solid ${current.target.color}` }} />}
+              {current.target.id === 'star' && <span>⭐</span>}
+              {current.target.id === 'diamond' && <div className="h-14 w-14 rotate-45 rounded-[0.9rem] bg-current" />}
+              {current.target.id === 'heart' && <span>💖</span>}
+            </div>
+          </div>
+          <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {sample([...current.options, current.target], Math.min(4, shapeSet.length)).map((shape) => (
+              <button key={`${index}-${shape.id}`} type="button" onClick={() => choose(shape.id)} className="rounded-[1.3rem] bg-slate-100 px-4 py-5 text-lg font-black text-slate-900 shadow-sm">
+                {shape.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 };
 
-const progressTone = (value: number, total: number) => {
-  const ratio = total ? value / total : 0;
-  if (ratio >= 0.75) return 'is-great';
-  if (ratio >= 0.45) return 'is-good';
-  return 'is-soft';
+const ColorsGame = ({ phase, onComplete }: { phase: ColorsPhase; onComplete: (result: GameResult) => void }) => {
+  const buckets = colorBuckets.slice(0, phase.bucketCount);
+  const pool = colorItems.filter((item) => buckets.some((bucket) => bucket.id === item.color));
+  const items = useMemo(() => sample(pool, phase.itemCount), [phase.itemCount, pool]);
+  const [index, setIndex] = useState(0);
+  const [correct, setCorrect] = useState(0);
+  const current = items[index];
+
+  const choose = (bucketId: string) => {
+    const nextCorrect = correct + (bucketId === current.color ? 1 : 0);
+    if (index === items.length - 1) {
+      onComplete({ stars: getStarsForRatio(nextCorrect / Math.max(1, items.length)), bonusText: `Você organizou ${items.length} itens.` });
+      return;
+    }
+    setCorrect(nextCorrect);
+    setIndex((state) => state + 1);
+  };
+
+  return (
+    <div className="grid gap-6 lg:grid-cols-[280px_1fr]">
+      <div className="rounded-[2rem] bg-[linear-gradient(180deg,#fefce8,#ecfccb)] p-5 shadow-inner">
+        <div className="text-sm font-black uppercase tracking-[0.22em] text-emerald-600">Jardim das cores</div>
+        <h3 className="mt-3 text-2xl font-black text-slate-950">{phase.title}</h3>
+        <p className="mt-2 text-sm text-slate-700">Arrume cada item no cesto da cor certa.</p>
+      </div>
+      <div className="rounded-[2rem] bg-[linear-gradient(180deg,rgba(250,204,21,0.12),rgba(16,185,129,0.12))] p-6">
+        <div className="rounded-[2rem] bg-white/85 p-6 shadow-sm">
+          <div className="text-center text-sm font-black uppercase tracking-[0.18em] text-emerald-600">Item atual</div>
+          <div className="mt-4 text-center text-8xl">{current.emoji}</div>
+          <div className="mt-3 text-center text-2xl font-black text-slate-950">{current.label}</div>
+          <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {buckets.map((bucket) => (
+              <button key={bucket.id} type="button" onClick={() => choose(bucket.id)} className={`rounded-[1.4rem] px-4 py-5 text-lg font-black shadow-sm ${bucket.colorClass}`}>
+                {bucket.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 };
 
-function App() {
-  const [profiles, setProfiles] = useState<ChildProfile[]>(() => {
-    const modern = safeReadStorage<ChildProfile[]>(STORAGE_KEYS.profiles, []);
-    const legacy = safeReadStorage<ChildProfile[]>(STORAGE_KEYS.legacyProfiles, []);
-    const source = modern.length ? modern : legacy;
-    return source.length ? source : [createProfile(0)];
-  });
-  const [activeProfileId, setActiveProfileId] = useState<string>(() => safeReadStorage(STORAGE_KEYS.activeProfileId, safeReadStorage(STORAGE_KEYS.legacyActive, '')));
-  const [progressMap, setProgressMap] = useState<ProgressMap>(() => loadLegacyProgress());
-  const [panel, setPanel] = useState<PanelKey>(() => mapHashToPanel(typeof window !== 'undefined' ? window.location.hash : ''));
+const MazeGame = ({ phase, onComplete }: { phase: MazePhase; onComplete: (result: GameResult) => void }) => {
+  const grid = phase.grid.map((row) => row.split(''));
+  const start = grid.flatMap((row, y) => row.map((cell, x) => ({ cell, x, y }))).find((item) => item.cell === 'S');
+  const target = grid.flatMap((row, y) => row.map((cell, x) => ({ cell, x, y }))).find((item) => item.cell === 'T');
+  const [position, setPosition] = useState({ x: start?.x ?? 1, y: start?.y ?? 1 });
+  const [steps, setSteps] = useState(0);
+  const [done, setDone] = useState(false);
+
+  const move = (dx: number, dy: number) => {
+    if (done) return;
+    const next = { x: position.x + dx, y: position.y + dy };
+    const cell = grid[next.y]?.[next.x];
+    if (!cell || cell === '#') return;
+    setPosition(next);
+    setSteps((value) => value + 1);
+    if (next.x === target?.x && next.y === target?.y) {
+      setDone(true);
+      const ratio = phase.idealSteps / Math.max(phase.idealSteps, steps + 1);
+      window.setTimeout(() => onComplete({ stars: getStarsForRatio(ratio), bonusText: `Tesouro alcançado em ${steps + 1} passos!` }), 300);
+    }
+  };
+
+  return (
+    <div className="grid gap-6 lg:grid-cols-[280px_1fr]">
+      <div className="rounded-[2rem] bg-[linear-gradient(180deg,#ecfeff,#eef2ff)] p-5 shadow-inner">
+        <div className="text-sm font-black uppercase tracking-[0.22em] text-sky-600">Caverna do tesouro</div>
+        <h3 className="mt-3 text-2xl font-black text-slate-950">{phase.title}</h3>
+        <p className="mt-2 text-sm text-slate-700">Use os botões para encontrar o baú escondido.</p>
+        <div className="mt-4 text-sm text-slate-700">Passos: <span className="font-black text-sky-700">{steps}</span></div>
+      </div>
+      <div className="rounded-[2rem] bg-[linear-gradient(180deg,rgba(59,130,246,0.12),rgba(99,102,241,0.12))] p-6">
+        <div className="rounded-[2rem] bg-white/85 p-6 shadow-sm">
+          <div className="flex justify-center">
+            <div className="grid gap-1" style={{ gridTemplateColumns: `repeat(${grid[0].length}, minmax(0, 1fr))` }}>
+              {grid.flatMap((row, y) => row.map((cell, x) => {
+                const isPlayer = position.x === x && position.y === y;
+                return (
+                  <div key={`${x}-${y}`} className={`flex h-10 w-10 items-center justify-center rounded-xl text-lg font-black ${cell === '#' ? 'bg-slate-800' : cell === 'T' ? 'bg-yellow-200' : 'bg-sky-50 border border-sky-100'}`}>
+                    {isPlayer ? '🧒' : cell === 'T' ? '🏆' : cell === 'S' ? '⭐' : ''}
+                  </div>
+                );
+              }))}
+            </div>
+          </div>
+          <div className="mt-6 flex flex-col items-center gap-2">
+            <button type="button" onClick={() => move(0, -1)} className="rounded-full bg-indigo-600 px-6 py-3 text-lg font-black text-white">↑</button>
+            <div className="flex gap-2">
+              <button type="button" onClick={() => move(-1, 0)} className="rounded-full bg-indigo-600 px-6 py-3 text-lg font-black text-white">←</button>
+              <button type="button" onClick={() => move(1, 0)} className="rounded-full bg-indigo-600 px-6 py-3 text-lg font-black text-white">→</button>
+            </div>
+            <button type="button" onClick={() => move(0, 1)} className="rounded-full bg-indigo-600 px-6 py-3 text-lg font-black text-white">↓</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const PuzzleGame = ({ phase, onComplete }: { phase: PuzzlePhase; onComplete: (result: GameResult) => void }) => {
+  const ordered = phase.scene.tiles;
+  const [pool, setPool] = useState(() => sample(ordered, ordered.length));
+  const [selected, setSelected] = useState<typeof ordered>([]);
+  const [mistakes, setMistakes] = useState(0);
+
+  const choose = (tileId: number) => {
+    const expected = ordered[selected.length];
+    const tile = pool.find((item) => item.id === tileId);
+    if (!tile) return;
+    if (tile.id === expected.id) {
+      const nextSelected = [...selected, tile];
+      const nextPool = pool.filter((item) => item.id !== tileId);
+      setSelected(nextSelected);
+      setPool(nextPool);
+      if (nextSelected.length === ordered.length) {
+        const ratio = ordered.length / Math.max(ordered.length + mistakes, 1);
+        onComplete({ stars: getStarsForRatio(ratio), bonusText: `Cena montada: ${phase.scene.title}!` });
+      }
+    } else {
+      setMistakes((value) => value + 1);
+    }
+  };
+
+  return (
+    <div className="grid gap-6 lg:grid-cols-[280px_1fr]">
+      <div className="rounded-[2rem] bg-[linear-gradient(180deg,#faf5ff,#fdf2f8)] p-5 shadow-inner">
+        <div className="text-sm font-black uppercase tracking-[0.22em] text-violet-600">Ateliê dos puzzles</div>
+        <h3 className="mt-3 text-2xl font-black text-slate-950">{phase.title}</h3>
+        <p className="mt-2 text-sm text-slate-700">Toque na próxima peça correta para montar a cena.</p>
+        <div className="mt-4 text-sm text-slate-700">Erros: <span className="font-black text-violet-700">{mistakes}</span></div>
+      </div>
+      <div className="rounded-[2rem] bg-[linear-gradient(180deg,rgba(168,85,247,0.12),rgba(244,114,182,0.12))] p-6">
+        <div className="rounded-[2rem] bg-white/85 p-6 shadow-sm">
+          <div className="text-sm font-black uppercase tracking-[0.18em] text-violet-600">Cena alvo</div>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {ordered.map((tile, index) => (
+              <div key={tile.id} className={`rounded-[1.4rem] border border-violet-100 p-4 text-center shadow-sm ${selected.length > index ? 'bg-violet-100' : 'bg-slate-50'}`}>
+                <div className="text-4xl">{selected.length > index ? tile.emoji : '✨'}</div>
+                <div className="mt-2 text-sm font-black text-slate-800">{selected.length > index ? tile.label : `Peça ${index + 1}`}</div>
+              </div>
+            ))}
+          </div>
+          <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {pool.map((tile) => (
+              <button key={tile.id} type="button" onClick={() => choose(tile.id)} className="rounded-[1.4rem] bg-violet-50 px-4 py-5 text-left shadow-sm">
+                <div className="text-4xl">{tile.emoji}</div>
+                <div className="mt-2 text-base font-black text-slate-900">{tile.label}</div>
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const GameModalContent = ({ phase, onClose, onWin }: { phase: GamePhase; onClose: () => void; onWin: (phaseId: string, result: GameResult) => void }) => {
+  const handleComplete = (result: GameResult) => {
+    onWin(phase.id, result);
+    window.setTimeout(onClose, 500);
+  };
+
+  if (phase.game === 'memory') return <MemoryGame phase={phase} onComplete={handleComplete} />;
+  if (phase.game === 'alphabet') return <AlphabetGame phase={phase} onComplete={handleComplete} />;
+  if (phase.game === 'math') return <MathGame phase={phase} onComplete={handleComplete} />;
+  if (phase.game === 'shape') return <ShapeGame phase={phase} onComplete={handleComplete} />;
+  if (phase.game === 'colors') return <ColorsGame phase={phase} onComplete={handleComplete} />;
+  if (phase.game === 'maze') return <MazeGame phase={phase} onComplete={handleComplete} />;
+  return <PuzzleGame phase={phase} onComplete={handleComplete} />;
+};
+
+const App = () => {
+  const [panel, setPanel] = useState<PanelKey>('home');
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [gameView, setGameView] = useState<GameView | null>(null);
-  const [selectedPackId, setSelectedPackId] = useState<string>('');
-  const [selectedWorld, setSelectedWorld] = useState<GameKey>('memory');
-  const [selectedTrackId, setSelectedTrackId] = useState<string>('');
-  const [catalogPacks, setCatalogPacks] = useState<PackCard[]>(() => normalizePacks(fallbackPacks));
-  const [catalogEvents, setCatalogEvents] = useState<SeasonalEvent[]>(fallbackEvents);
-  const [catalogTracks, setCatalogTracks] = useState<ParentWeeklyTrack[]>(fallbackTracks);
-  const [catalogUpdatedAt, setCatalogUpdatedAt] = useState<string | null>(null);
-  const [catalogSource, setCatalogSource] = useState<'local' | 'remote'>('local');
-  const [loadingCatalog, setLoadingCatalog] = useState(true);
-  const [soundEnabled, setSoundEnabled] = useState(() => safeReadStorage<boolean>(STORAGE_KEYS.sound, true));
-  const [infra, setInfra] = useState<InfrastructureHealthPayload | null>(null);
-  const [toasts, setToasts] = useState<Toast[]>([]);
-  const [deviceId] = useState(() => getOrCreateDeviceId('edv16-device'));
+  const [profiles] = useState<ChildProfile[]>(() => safeReadStorage(STORAGE_KEYS.profiles, defaultProfiles));
+  const [activeProfileId] = useState<string>(() => safeReadStorage(STORAGE_KEYS.activeProfileId, defaultProfiles[0].id));
+  const [progressMap, setProgressMap] = useState<Record<string, PlayerProgress>>(() => safeReadStorage(STORAGE_KEYS.progressMap, { [defaultProfiles[0].id]: defaultProgress() }));
+  const [contentPacks, setContentPacks] = useState<ContentPack[]>(fallbackContentPacks);
+  const [seasonalEvents, setSeasonalEvents] = useState<SeasonalEvent[]>(fallbackSeasonalEvents);
+  const [weeklyTracks, setWeeklyTracks] = useState<ParentWeeklyTrack[]>(fallbackParentWeeklyTracks);
+  const [catalogStatus, setCatalogStatus] = useState<'local' | 'remote'>('local');
+  const [selectedWorld, setSelectedWorld] = useState<GameKey | null>(null);
+  const [selectedPhaseId, setSelectedPhaseId] = useState<string | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
+  const [audioEnabled, setAudioEnabled] = useState<boolean>(() => safeReadStorage(STORAGE_KEYS.settings, { audio: true }).audio);
 
-  const activeProfile = useMemo(() => profiles.find((profile) => profile.id === activeProfileId) ?? profiles[0], [profiles, activeProfileId]);
-
-  const filteredTracks = useMemo(
-    () => catalogTracks.filter((track) => activeProfile.age >= track.ageMin && activeProfile.age <= track.ageMax),
-    [catalogTracks, activeProfile.age],
-  );
-
-  const filteredPacks = useMemo(
-    () => catalogPacks.filter((pack) => pack.recommendedAges.includes(activeProfile.age)),
-    [catalogPacks, activeProfile.age],
-  );
-
-  const selectedPack = useMemo(
-    () => filteredPacks.find((pack) => pack.id === selectedPackId) ?? filteredPacks[0] ?? catalogPacks[0] ?? null,
-    [filteredPacks, selectedPackId, catalogPacks],
-  );
-
-  const selectedTrack = useMemo(
-    () => filteredTracks.find((track) => track.id === selectedTrackId) ?? filteredTracks[0] ?? catalogTracks[0] ?? null,
-    [filteredTracks, selectedTrackId, catalogTracks],
-  );
-
-  const totalStars = useMemo(() => sumStars(progressMap), [progressMap]);
-  const totalCompleted = useMemo(() => sumCompleted(progressMap), [progressMap]);
-  const nextReward = useMemo(
-    () => rewardMilestones.find((reward) => reward.threshold > totalStars) ?? rewardMilestones[rewardMilestones.length - 1],
-    [totalStars],
-  );
-
-  const recommendedWorld = useMemo(() => {
-    const tracks = filteredTracks.filter((track) => track.world);
-    return tracks[0]?.world ?? selectedPack ? (phaseMap[selectedPack?.phaseIds[0] ?? '']?.game ?? 'memory') : 'memory';
-  }, [filteredTracks, selectedPack]);
+  const activeProfile = useMemo(() => profiles.find((profile) => profile.id === activeProfileId) ?? profiles[0], [activeProfileId, profiles]);
+  const activeProgress = progressMap[activeProfile.id] ?? defaultProgress();
 
   useEffect(() => {
     writeStorage(STORAGE_KEYS.profiles, profiles);
   }, [profiles]);
 
   useEffect(() => {
-    if (activeProfile) {
-      writeStorage(STORAGE_KEYS.activeProfileId, activeProfile.id);
-    }
-  }, [activeProfile]);
+    writeStorage(STORAGE_KEYS.activeProfileId, activeProfileId);
+  }, [activeProfileId]);
 
   useEffect(() => {
-    writeStorage(STORAGE_KEYS.progress, progressMap);
+    writeStorage(STORAGE_KEYS.progressMap, progressMap);
   }, [progressMap]);
 
   useEffect(() => {
-    writeStorage(STORAGE_KEYS.sound, soundEnabled);
-  }, [soundEnabled]);
-
-  useEffect(() => {
-    const hash = panelToHash(panel);
-    if (typeof window !== 'undefined') {
-      if (hash) {
-        window.history.replaceState(null, '', hash);
-      } else {
-        window.history.replaceState(null, '', window.location.pathname + window.location.search);
-      }
-    }
-  }, [panel]);
-
-  useEffect(() => {
-    if (selectedPack && !selectedPackId) setSelectedPackId(selectedPack.id);
-  }, [selectedPack, selectedPackId]);
-
-  useEffect(() => {
-    if (selectedTrack && !selectedTrackId) setSelectedTrackId(selectedTrack.id);
-  }, [selectedTrack, selectedTrackId]);
+    writeStorage(STORAGE_KEYS.settings, { audio: audioEnabled });
+  }, [audioEnabled]);
 
   useEffect(() => {
     let cancelled = false;
-    const loadCatalog = async () => {
-      setLoadingCatalog(true);
-      if (dynamicContentEnabled()) {
-        const response = await fetchDynamicCatalog();
-        if (!cancelled && response.ok && response.payload) {
-          setCatalogPacks(normalizePacks(response.payload.contentPacks));
-          setCatalogEvents(response.payload.seasonalEvents);
-          setCatalogTracks(response.payload.parentWeeklyTracks);
-          setCatalogUpdatedAt(response.updatedAt ?? null);
-          setCatalogSource('remote');
-          setLoadingCatalog(false);
-          return;
-        }
-      }
-      if (!cancelled) {
-        setCatalogPacks(normalizePacks(fallbackPacks));
-        setCatalogEvents(fallbackEvents);
-        setCatalogTracks(fallbackTracks);
-        setCatalogUpdatedAt(null);
-        setCatalogSource('local');
-        setLoadingCatalog(false);
-      }
-    };
-    loadCatalog();
+    if (!dynamicContentEnabled()) return;
+    fetchDynamicCatalog().then((response) => {
+      if (cancelled || !response.ok || !response.payload) return;
+      setContentPacks(response.payload.contentPacks);
+      setSeasonalEvents(response.payload.seasonalEvents);
+      setWeeklyTracks(response.payload.parentWeeklyTracks);
+      setCatalogStatus('remote');
+    });
     return () => {
       cancelled = true;
     };
   }, []);
 
   useEffect(() => {
-    let cancelled = false;
-    fetchInfrastructureHealth().then((response) => {
-      if (!cancelled && response.ok && response.payload) setInfra(response.payload);
+    if (!toast) return;
+    const timeoutId = window.setTimeout(() => setToast(null), 2800);
+    return () => window.clearTimeout(timeoutId);
+  }, [toast]);
+
+  const activeTrack = useMemo(() => weeklyTracks.find((track) => activeProfile.age >= track.ageMin && activeProfile.age <= track.ageMax) ?? weeklyTracks[0], [activeProfile.age, weeklyTracks]);
+  const lastWorld = worlds.find((world) => world.game === activeProgress.lastWorld) ?? worlds[0];
+  const recommendedPack = contentPacks.find((pack) => pack.recommendedAges.includes(activeProfile.age)) ?? contentPacks[0];
+  const featuredEvent = seasonalEvents[0];
+  const completedCount = activeProgress.completedPhases.length;
+  const missionCards = [
+    { title: 'Jogar 2 fases', progress: `${Math.min(2, completedCount % 3)}/2`, stars: 20 },
+    { title: 'Acertar cores', progress: `${Math.min(5, completedCount % 6)}/5`, stars: 15 },
+    { title: 'Abrir recompensa', progress: `${Math.min(1, activeProgress.rewardsOpened ? 1 : 0)}/1`, stars: 25 },
+  ];
+
+  const completePhase = (phaseId: string, result: GameResult) => {
+    setProgressMap((current) => {
+      const currentProgress = current[activeProfile.id] ?? defaultProgress();
+      const firstTime = !currentProgress.completedPhases.includes(phaseId);
+      const nextProgress: PlayerProgress = {
+        ...currentProgress,
+        stars: currentProgress.stars + result.stars * (firstTime ? 18 : 8),
+        gems: currentProgress.gems + (firstTime ? result.stars : 1),
+        streak: currentProgress.streak + 1,
+        rewardsOpened: currentProgress.rewardsOpened + (firstTime ? 1 : 0),
+        hearts: 3,
+        lastWorld: phaseMap[phaseId].game,
+        favoriteWorld: phaseMap[phaseId].game,
+        completedPhases: firstTime ? [...currentProgress.completedPhases, phaseId] : currentProgress.completedPhases,
+        dailyMinutes: currentProgress.dailyMinutes + 6,
+      };
+      return { ...current, [activeProfile.id]: nextProgress };
     });
-    return () => {
-      cancelled = true;
-    };
-  }, [deviceId]);
-
-  const pushToast = (tone: Toast['tone'], title: string, text: string) => {
-    const id = Date.now() + Math.floor(Math.random() * 1000);
-    setToasts((current) => [...current, { id, tone, title, text }]);
-    window.setTimeout(() => {
-      setToasts((current) => current.filter((toast) => toast.id !== id));
-    }, 3800);
+    setToast(`Muito bem! ${result.bonusText}`);
   };
 
-  const handleGameComplete = (phaseId: string, stars: number, score: number) => {
-    setProgressMap((current) => ({
-      ...current,
-      [phaseId]: {
-        plays: (current[phaseId]?.plays ?? 0) + 1,
-        bestStars: Math.max(current[phaseId]?.bestStars ?? 0, stars),
-        bestScore: Math.max(current[phaseId]?.bestScore ?? 0, score),
-        completed: true,
-        updatedAt: new Date().toISOString(),
-      },
-    }));
-    pushToast('success', 'Missão concluída!', `Você ganhou ${stars} estrelas nesta fase.`);
+  const openPhase = (phaseId: string) => {
+    setSelectedPhaseId(phaseId);
+    setSelectedWorld(phaseMap[phaseId].game);
   };
 
-  const handleGamePlayed = (phaseId: string) => {
-    setProgressMap((current) => ({
-      ...current,
-      [phaseId]: {
-        ...ensureProgressShape(phaseId, current),
-        plays: (current[phaseId]?.plays ?? 0) + 1,
-        updatedAt: new Date().toISOString(),
-      },
-    }));
-  };
-
-  const featuredPack = selectedPack ?? filteredPacks[0] ?? catalogPacks[0] ?? null;
-  const featuredTrack = selectedTrack ?? filteredTracks[0] ?? catalogTracks[0] ?? null;
-  const latestEvent = catalogEvents[0] ?? null;
-
-  return (
-    <div className="kid-shell">
-      <FloatingDecor />
-      <SidebarNav panel={panel} setPanel={setPanel} drawerOpen={drawerOpen} setDrawerOpen={setDrawerOpen} profile={activeProfile} />
-
-      <div className="kid-main">
-        <TopBar
-          profile={activeProfile}
-          soundEnabled={soundEnabled}
-          setSoundEnabled={setSoundEnabled}
-          onOpenMenu={() => setDrawerOpen(true)}
-          onOpenPlay={() => setPanel('play')}
-        />
-
-        <main className="kid-content">
-          <HomeDashboard
-            profile={activeProfile}
-            totalStars={totalStars}
-            totalCompleted={totalCompleted}
-            nextRewardLabel={nextReward.label}
-            featuredPack={featuredPack}
-            latestEvent={latestEvent}
-            featuredTrack={featuredTrack}
-            recommendedWorld={recommendedWorld}
-            infra={infra}
-            catalogSource={catalogSource}
-            catalogUpdatedAt={catalogUpdatedAt}
-            loadingCatalog={loadingCatalog}
-            progressMap={progressMap}
-            onOpenPanel={setPanel}
-            onQuickPlay={(phaseId, sourceLabel) => setGameView({ phaseId, sourceLabel })}
-          />
-        </main>
+  const sidebar = (
+    <aside className="v8-sidebar hidden w-[120px] shrink-0 flex-col rounded-[2rem] border border-white/55 bg-white/72 p-4 shadow-[0_24px_80px_rgba(15,23,42,0.18)] backdrop-blur-2xl xl:flex">
+      <div className="mb-5 rounded-[1.8rem] bg-[linear-gradient(135deg,#1d4ed8,#7c3aed,#ec4899)] p-4 text-center text-white shadow-lg">
+        <div className="text-3xl">⭐</div>
+        <div className="mt-2 text-sm font-black">Estelinha</div>
       </div>
-
-      <AnimatePresence>
-        {panel !== 'home' && (
-          <FloatingWindow title={panelMeta[panel].title} subtitle={panelMeta[panel].subtitle} onClose={() => setPanel('home')}>
-            {panel === 'packs' && (
-              <PacksPanel
-                packs={filteredPacks.length ? filteredPacks : catalogPacks}
-                activeAge={activeProfile.age}
-                progressMap={progressMap}
-                selectedPackId={selectedPack?.id ?? ''}
-                onSelectPack={setSelectedPackId}
-                onPlayPhase={(phaseId, sourceLabel) => setGameView({ phaseId, sourceLabel })}
-              />
-            )}
-            {panel === 'events' && <EventsPanel events={catalogEvents} progressMap={progressMap} />}
-            {panel === 'tracks' && <TracksPanel tracks={filteredTracks.length ? filteredTracks : catalogTracks} onPlayPhase={(phaseId, sourceLabel) => setGameView({ phaseId, sourceLabel })} />}
-            {panel === 'map' && <MapPanel progressMap={progressMap} onPlayPhase={(phaseId, sourceLabel) => setGameView({ phaseId, sourceLabel })} onSelectWorld={setSelectedWorld} selectedWorld={selectedWorld} />}
-            {panel === 'play' && (
-              <PlayPanel
-                packs={filteredPacks.length ? filteredPacks : catalogPacks}
-                progressMap={progressMap}
-                selectedWorld={selectedWorld}
-                setSelectedWorld={setSelectedWorld}
-                onPlayPhase={(phaseId, sourceLabel) => setGameView({ phaseId, sourceLabel })}
-              />
-            )}
-            {panel === 'rewards' && <RewardsPanel progressMap={progressMap} totalStars={totalStars} totalCompleted={totalCompleted} />}
-            {panel === 'parents' && <ParentsPanel profile={activeProfile} tracks={filteredTracks.length ? filteredTracks : catalogTracks} infra={infra} />}
-            {panel === 'profile' && <ProfilePanel profiles={profiles} activeProfileId={activeProfile.id} onSetActive={setActiveProfileId} onUpdateProfiles={setProfiles} />}
-          </FloatingWindow>
-        )}
-      </AnimatePresence>
-
-      <AnimatePresence>
-        {gameView && (
-          <FloatingWindow title={phaseMap[gameView.phaseId]?.title ?? 'Fase'} subtitle={gameView.sourceLabel} onClose={() => setGameView(null)} wide>
-            <GameStage
-              phase={phaseMap[gameView.phaseId]}
-              progress={progressMap[gameView.phaseId] ?? createProgress()}
-              soundEnabled={soundEnabled}
-              onPlayed={() => handleGamePlayed(gameView.phaseId)}
-              onComplete={(stars, score) => handleGameComplete(gameView.phaseId, stars, score)}
-            />
-          </FloatingWindow>
-        )}
-      </AnimatePresence>
-
-      <ToastLayer toasts={toasts} />
-    </div>
-  );
-}
-
-type SidebarNavProps = {
-  panel: PanelKey;
-  setPanel: (panel: PanelKey) => void;
-  drawerOpen: boolean;
-  setDrawerOpen: (value: boolean) => void;
-  profile: ChildProfile;
-};
-
-function SidebarNav({ panel, setPanel, drawerOpen, setDrawerOpen, profile }: SidebarNavProps) {
-  return (
-    <>
-      <aside className="kid-sidebar desktop-only">
-        <SidebarContent panel={panel} setPanel={setPanel} profile={profile} closeDrawer={() => undefined} />
-      </aside>
-      <AnimatePresence>
-        {drawerOpen && (
-          <motion.div className="drawer-backdrop mobile-only" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setDrawerOpen(false)}>
-            <motion.aside
-              className="kid-sidebar mobile-sheet"
-              initial={{ x: -320 }}
-              animate={{ x: 0 }}
-              exit={{ x: -320 }}
-              transition={{ type: 'spring', stiffness: 280, damping: 28 }}
-              onClick={(event) => event.stopPropagation()}
-            >
-              <SidebarContent panel={panel} setPanel={setPanel} profile={profile} closeDrawer={() => setDrawerOpen(false)} />
-            </motion.aside>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </>
-  );
-}
-
-type SidebarContentProps = {
-  panel: PanelKey;
-  setPanel: (panel: PanelKey) => void;
-  profile: ChildProfile;
-  closeDrawer: () => void;
-};
-
-function SidebarContent({ panel, setPanel, profile, closeDrawer }: SidebarContentProps) {
-  return (
-    <div className="sidebar-inner">
-      <div className="brand-badge">
-        <motion.div className="brand-orb" animate={{ rotate: [0, 8, -8, 0] }} transition={{ duration: 6, repeat: Infinity }}>
-          ✨
-        </motion.div>
-        <div>
-          <strong>Escola Divertida</strong>
-          <span>Menu mágico da criança</span>
-        </div>
-      </div>
-
-      <div className="sidebar-profile-card">
-        <div className="sidebar-avatar">{profile.avatar}</div>
-        <div>
-          <strong>{profile.name}</strong>
-          <span>{profile.age} anos · {profile.buddy}</span>
-        </div>
-      </div>
-
-      <nav className="sidebar-nav">
-        {navItems.map((item) => {
+      <div className="flex flex-1 flex-col gap-3">
+        {panelItems.map((item) => {
           const Icon = item.icon;
-          const active = item.key === panel;
+          const active = panel === item.key;
           return (
             <button
-              type="button"
               key={item.key}
-              className={cn('sidebar-nav-item', active && 'is-active')}
-              onClick={() => {
-                setPanel(item.key);
-                closeDrawer();
-              }}
+              type="button"
+              onClick={() => setPanel(item.key)}
+              className={`group rounded-[1.6rem] px-3 py-3 text-center shadow-sm ${active ? `bg-[linear-gradient(135deg,var(--tw-gradient-stops))] ${item.tone} text-white` : 'bg-white/88 text-slate-800'}`}
             >
-              <span className={cn('sidebar-icon', item.accent)}>
-                <Icon size={20} />
-              </span>
-              <span className="sidebar-copy">
-                <strong>{item.label}</strong>
-                <small>{item.description}</small>
-              </span>
+              <Icon className="mx-auto h-6 w-6" />
+              <div className="mt-2 text-[11px] font-black uppercase tracking-[0.18em]">{item.label}</div>
             </button>
           );
         })}
-      </nav>
-
-      <div className="sidebar-footer-card">
-        <p>Toque em qualquer opção para abrir uma janela grande e fácil de usar.</p>
-        <div className="sidebar-stars">🌟 🦊 🎨 🚀</div>
       </div>
-    </div>
+    </aside>
   );
-}
 
-type TopBarProps = {
-  profile: ChildProfile;
-  soundEnabled: boolean;
-  setSoundEnabled: (value: boolean) => void;
-  onOpenMenu: () => void;
-  onOpenPlay: () => void;
-};
-
-function TopBar({ profile, soundEnabled, setSoundEnabled, onOpenMenu, onOpenPlay }: TopBarProps) {
-  return (
-    <header className="kid-topbar">
-      <div className="topbar-left">
-        <button type="button" className="circle-button mobile-only" onClick={onOpenMenu} aria-label="Abrir menu">
-          <Menu size={20} />
+  const topBar = (
+    <header className="flex flex-wrap items-center justify-between gap-4 rounded-[2rem] border border-white/55 bg-white/72 px-4 py-4 shadow-[0_18px_60px_rgba(15,23,42,0.14)] backdrop-blur-2xl md:px-6">
+      <div className="flex items-center gap-3">
+        <button type="button" onClick={() => setDrawerOpen(true)} className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-slate-900 text-white xl:hidden">
+          <Menu className="h-5 w-5" />
         </button>
-        <div className="topbar-title">
-          <div className="title-icon">{profile.avatar}</div>
+        <div className="flex items-center gap-3 rounded-[1.6rem] bg-[linear-gradient(135deg,#1d4ed8,#7c3aed,#ec4899)] px-4 py-3 text-white shadow-lg">
+          <div className="text-3xl">🌟</div>
           <div>
-            <strong>Olá, {profile.name}!</strong>
-            <span>Escolha uma aventura brilhante para começar.</span>
+            <div className="text-xs font-black uppercase tracking-[0.2em] text-white/80">Escola Divertida</div>
+            <div className="text-xl font-black">V8 premium kids</div>
           </div>
         </div>
       </div>
-      <div className="topbar-actions">
-        <button type="button" className="circle-button" onClick={() => setSoundEnabled(!soundEnabled)} aria-label="Alternar som">
-          {soundEnabled ? <AudioLines size={18} /> : <ShieldCheck size={18} />}
-        </button>
-        <button type="button" className="play-pill" onClick={onOpenPlay}>
-          <Play size={18} /> Abrir aventuras
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="flex items-center gap-2 rounded-full bg-yellow-100 px-4 py-2 text-sm font-black text-yellow-700"><Star className="h-4 w-4 fill-current" /> {activeProgress.stars}</div>
+        <div className="flex items-center gap-2 rounded-full bg-red-100 px-4 py-2 text-sm font-black text-red-600"><Heart className="h-4 w-4 fill-current" /> {activeProgress.hearts}</div>
+        <div className="flex items-center gap-2 rounded-full bg-orange-100 px-4 py-2 text-sm font-black text-orange-600"><Flame className="h-4 w-4 fill-current" /> {activeProgress.streak} dias</div>
+        <button type="button" className={`flex items-center gap-3 rounded-full bg-[linear-gradient(135deg,var(--tw-gradient-stops))] px-4 py-2 text-white shadow-lg ${activeProfile.accent}`}>
+          <div className="text-2xl">{activeProfile.avatar}</div>
+          <div className="text-left">
+            <div className="text-sm font-black">{activeProfile.name}</div>
+            <div className="text-[11px] font-semibold text-white/80">{activeProfile.age} anos</div>
+          </div>
         </button>
       </div>
     </header>
   );
-}
 
-type HomeDashboardProps = {
-  profile: ChildProfile;
-  totalStars: number;
-  totalCompleted: number;
-  nextRewardLabel: string;
-  featuredPack: PackCard | null;
-  latestEvent: SeasonalEvent | null;
-  featuredTrack: ParentWeeklyTrack | null;
-  recommendedWorld: GameKey;
-  infra: InfrastructureHealthPayload | null;
-  catalogSource: 'local' | 'remote';
-  catalogUpdatedAt: string | null;
-  loadingCatalog: boolean;
-  progressMap: ProgressMap;
-  onOpenPanel: (panel: PanelKey) => void;
-  onQuickPlay: (phaseId: string, sourceLabel: string) => void;
-};
-
-function HomeDashboard({
-  profile,
-  totalStars,
-  totalCompleted,
-  nextRewardLabel,
-  featuredPack,
-  latestEvent,
-  featuredTrack,
-  recommendedWorld,
-  infra,
-  catalogSource,
-  catalogUpdatedAt,
-  loadingCatalog,
-  progressMap,
-  onOpenPanel,
-  onQuickPlay,
-}: HomeDashboardProps) {
-  const world = worlds.find((item) => item.game === recommendedWorld) ?? worlds[0];
-  const nextPhaseId = nextUnlockedPhaseId(world.game, progressMap);
-  const worldProgress = worldCompletionCount(world.game, progressMap);
-
-  return (
-    <div className="dashboard-stack">
-      <section className="hero-card">
-        <div className="hero-copy">
-          <span className="eyebrow-chip">✨ Navegação infantil premium</span>
-          <h1>Menu lateral, janelas flutuantes e aventuras fáceis de abrir</h1>
-          <p>
-            Agora o app mostra menos texto técnico e mais botões claros, ilustrações, mascotes e atalhos grandes.
-            Cada área abre em uma janela própria para a criança não se perder.
-          </p>
-          <div className="hero-actions">
-            <button type="button" className="primary-big-button" onClick={() => onOpenPanel('play')}>
-              <Play size={20} /> Jogar agora
-            </button>
-            <button type="button" className="secondary-big-button" onClick={() => onOpenPanel('packs')}>
-              <Layers3 size={20} /> Ver packs
-            </button>
+  const homePanel = (
+    <GlassPanel
+      title={`${getTodayPhrase()}, ${activeProfile.name}!`}
+      subtitle="Seu app agora está organizado como um produto infantil premium: bonito, fácil de navegar e com jogos abrindo em janelas próprias."
+      badge={catalogStatus === 'remote' ? 'Catálogo V6 remoto ativo' : 'Catálogo local pronto'}
+      art={homeArt}
+      actions={
+        <div className="flex flex-wrap gap-3">
+          <button type="button" onClick={() => setPanel('play')} className="rounded-full bg-[linear-gradient(135deg,#84cc16,#10b981)] px-5 py-3 text-sm font-black text-white shadow-lg">Jogar agora</button>
+          <button type="button" onClick={() => setPanel('rewards')} className="rounded-full bg-[linear-gradient(135deg,#8b5cf6,#ec4899)] px-5 py-3 text-sm font-black text-white shadow-lg">Abrir recompensas</button>
+        </div>
+      }
+    >
+      <div className="grid gap-5 xl:grid-cols-[1.15fr_0.85fr]">
+        <div className="grid gap-5 md:grid-cols-2">
+          <div className="rounded-[2rem] bg-[linear-gradient(135deg,#dcfce7,#f0fdf4)] p-5 shadow-sm">
+            <div className="text-sm font-black uppercase tracking-[0.18em] text-emerald-600">Continuar</div>
+            <div className="mt-3 text-2xl font-black text-slate-950">{lastWorld.shortTitle}</div>
+            <div className="mt-2 text-sm text-slate-700">Próxima fase pronta para brincar sem rolagem confusa.</div>
+            <button type="button" onClick={() => { setPanel('play'); setSelectedWorld(lastWorld.game); }} className="mt-5 rounded-full bg-[linear-gradient(135deg,#84cc16,#10b981)] px-5 py-3 text-sm font-black text-white shadow-lg">Continuar agora</button>
           </div>
-          <div className="hero-stats-grid">
-            <StatBubble label="Estrelas" value={String(totalStars)} tone="pink" />
-            <StatBubble label="Fases prontas" value={String(totalCompleted)} tone="blue" />
-            <StatBubble label="Próximo prêmio" value={nextRewardLabel} tone="gold" compact />
+          <div className="rounded-[2rem] bg-[linear-gradient(135deg,#ede9fe,#fdf4ff)] p-5 shadow-sm">
+            <div className="text-sm font-black uppercase tracking-[0.18em] text-violet-600">Recompensas</div>
+            <div className="mt-3 text-2xl font-black text-slate-950">{activeProgress.rewardsOpened} prontas</div>
+            <div className="mt-2 text-sm text-slate-700">Baús, selos e troféus com abertura simples e chamativa.</div>
+            <button type="button" onClick={() => setPanel('rewards')} className="mt-5 rounded-full bg-[linear-gradient(135deg,#8b5cf6,#ec4899)] px-5 py-3 text-sm font-black text-white shadow-lg">Ver baús</button>
+          </div>
+          <div className="rounded-[2rem] bg-[linear-gradient(135deg,#fff7ed,#fef3c7)] p-5 shadow-sm md:col-span-2">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <div className="text-sm font-black uppercase tracking-[0.18em] text-orange-500">Evento em destaque</div>
+                <div className="mt-2 text-2xl font-black text-slate-950">{featuredEvent.title}</div>
+                <div className="mt-2 text-sm text-slate-700">{featuredEvent.subtitle}</div>
+              </div>
+              <button type="button" onClick={() => setPanel('events')} className="rounded-full bg-white px-4 py-2 text-sm font-black text-orange-700 shadow">Ver evento</button>
+            </div>
+          </div>
+          <div className="rounded-[2rem] bg-[linear-gradient(135deg,#eff6ff,#ecfeff)] p-5 shadow-sm md:col-span-2">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <div className="text-sm font-black uppercase tracking-[0.18em] text-sky-600">Missões do dia</div>
+                <div className="mt-2 text-lg font-black text-slate-950">Pequenas metas para brincar com objetivo claro</div>
+              </div>
+              <button type="button" onClick={() => setPanel('events')} className="rounded-full bg-white px-4 py-2 text-sm font-black text-sky-700 shadow">Ver eventos</button>
+            </div>
+            <div className="mt-4 grid gap-3 md:grid-cols-3">
+              {missionCards.map((mission) => (
+                <div key={mission.title} className="rounded-[1.5rem] bg-white/85 p-4 shadow-sm">
+                  <div className="text-base font-black text-slate-950">{mission.title}</div>
+                  <div className="mt-2 text-sm text-slate-600">Progresso: {mission.progress}</div>
+                  <div className="mt-2 text-sm font-black text-yellow-600">+{mission.stars} estrelas</div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
-        <div className="hero-visual">
-          <motion.div className="hero-mascot-card" animate={{ y: [0, -12, 0] }} transition={{ duration: 4, repeat: Infinity }}>
-            <div className="mascot-sky">{profile.avatar}</div>
-            <div className="mascot-copy">
-              <strong>{profile.name}</strong>
-              <span>{profile.buddy} pronto para brincar</span>
-            </div>
-          </motion.div>
-          <div className="hero-mini-worlds">
-            {worlds.slice(0, 4).map((item, index) => (
-              <motion.div
-                key={item.game}
-                className={cn('mini-world-card', worldAccent[item.game])}
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.05 * index }}
-              >
-                <span>{worldIllustrations[item.game]}</span>
-                <strong>{item.shortTitle}</strong>
-              </motion.div>
+        <div className="rounded-[2.1rem] bg-white/78 p-4 shadow-sm">
+          <img src={homeArt} alt="Moodboard do app" className="h-56 w-full rounded-[1.8rem] object-cover shadow-sm" />
+          <div className="mt-4 rounded-[1.6rem] bg-[linear-gradient(135deg,#eef2ff,#fff7ed)] p-4">
+            <div className="text-sm font-black uppercase tracking-[0.18em] text-indigo-600">Pack recomendado</div>
+            <div className="mt-2 text-2xl font-black text-slate-950">{recommendedPack.title}</div>
+            <div className="mt-2 text-sm text-slate-700">{recommendedPack.description}</div>
+            <button type="button" onClick={() => setPanel('packs')} className="mt-4 rounded-full bg-slate-900 px-5 py-3 text-sm font-black text-white shadow-lg">Abrir pack</button>
+          </div>
+        </div>
+      </div>
+    </GlassPanel>
+  );
+
+  const mapPanel = (
+    <GlassPanel title="Mapa de progressão" subtitle="Cada mundo aparece como um bloco grande, claro e chamativo, com navegação simples para a criança entender onde brincar." badge="Mapa visual premium" art={mapArt}>
+      <div className="grid gap-5 xl:grid-cols-[1.2fr_0.8fr]">
+        <div className="rounded-[2rem] bg-white/82 p-4 shadow-sm">
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            {worlds.map((world, index) => (
+              <button key={world.game} type="button" onClick={() => { setPanel('play'); setSelectedWorld(world.game); }} className={`rounded-[2rem] bg-[linear-gradient(135deg,var(--tw-gradient-stops))] p-4 text-left shadow-lg ${world.colorClass}`}>
+                <div className="flex items-center justify-between gap-3">
+                  <div className="text-4xl">{worldEmoji[world.game]}</div>
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/75 text-lg font-black text-slate-900">{index + 1}</div>
+                </div>
+                <div className="mt-4 text-xl font-black text-slate-950">{world.shortTitle}</div>
+                <div className="mt-2 text-sm font-semibold text-slate-800">{world.description}</div>
+                <div className="mt-4 text-sm font-black text-indigo-700">Abrir mundo</div>
+              </button>
             ))}
           </div>
         </div>
-      </section>
-
-      <section className="quick-grid">
-        <QuickLaunchCard
-          icon={Gamepad2}
-          title="Abrir fase recomendada"
-          text={`Seu próximo passo no ${world.shortTitle} já está pronto.`}
-          actionLabel="Abrir fase"
-          accent="from-fuchsia-400 to-violet-400"
-          onClick={() => onQuickPlay(nextPhaseId, `Fase recomendada · ${world.title}`)}
-        />
-        <QuickLaunchCard
-          icon={Layers3}
-          title={featuredPack?.title ?? 'Packs encantados'}
-          text={featuredPack?.description ?? 'Coleções prontas por idade e tema.'}
-          actionLabel="Ver packs"
-          accent="from-amber-400 to-orange-400"
-          onClick={() => onOpenPanel('packs')}
-        />
-        <QuickLaunchCard
-          icon={CalendarDays}
-          title={latestEvent?.title ?? 'Eventos especiais'}
-          text={latestEvent?.subtitle ?? 'Campanhas com recompensa e brilho.'}
-          actionLabel="Ver eventos"
-          accent="from-sky-400 to-cyan-400"
-          onClick={() => onOpenPanel('events')}
-        />
-      </section>
-
-      <section className="dashboard-panels-grid">
-        <div className="kid-panel card-panel wide">
-          <div className="panel-heading-row">
-            <SectionHeading eyebrow="Meu momento" title="Tudo em blocos fáceis para a criança" icon={<WandSparkles size={20} />} />
-            <span className={cn('status-pill', catalogSource === 'remote' ? 'is-remote' : 'is-local')}>
-              {loadingCatalog ? 'Carregando catálogo…' : catalogSource === 'remote' ? 'Catálogo V6 ativo' : 'Catálogo local'}
-            </span>
-          </div>
-          <div className="icon-story-grid">
-            <StoryCard emoji="🧭" title="Escolher" text="Toque no menu lateral e abra a janela que quiser." />
-            <StoryCard emoji="🎮" title="Brincar" text="Cada fase abre numa janela grande, sem bagunça na tela." />
-            <StoryCard emoji="🌟" title="Ganhar" text="As estrelas aparecem de forma clara e premiam o esforço." />
-            <StoryCard emoji="👨‍👩‍👧" title="Acompanhar" text="Pais veem trilhas e progresso sem linguagem técnica pesada." />
-          </div>
-          <div className="home-meta-bar">
-            <span>Atualização do catálogo: {catalogUpdatedAt ? new Date(catalogUpdatedAt).toLocaleString('pt-BR') : 'modo local'}</span>
-            <span>Infraestrutura: {infra?.supabaseReachable ? 'conectada' : 'checando'}</span>
+        <div className="rounded-[2rem] bg-white/82 p-4 shadow-sm">
+          <img src={mapArt} alt="Referência do mapa" className="h-56 w-full rounded-[1.6rem] object-cover shadow-sm" />
+          <div className="mt-4 rounded-[1.6rem] bg-[linear-gradient(135deg,#fff7ed,#fdf2f8)] p-4">
+            <div className="text-sm font-black uppercase tracking-[0.18em] text-orange-500">Missão do dia</div>
+            <div className="mt-2 text-xl font-black text-slate-950">Complete 2 fases do mundo {lastWorld.shortTitle}</div>
+            <div className="mt-2 text-sm text-slate-700">A proposta é reduzir bagunça e deixar sempre um próximo passo muito claro.</div>
           </div>
         </div>
-        <div className="kid-panel card-panel">
-          <SectionHeading eyebrow="Atalho brilhante" title="Trilha recomendada" icon={<BookOpen size={20} />} />
-          {featuredTrack ? (
-            <div className="track-highlight-card">
-              <strong>{featuredTrack.title}</strong>
-              <p>{featuredTrack.description}</p>
-              <ul>
-                {featuredTrack.days.slice(0, 3).map((day) => (
-                  <li key={day.day}><span>{day.day}</span>{day.title}</li>
-                ))}
-              </ul>
-              <button type="button" className="mini-pill-button" onClick={() => onOpenPanel('tracks')}>Abrir trilha</button>
-            </div>
+      </div>
+    </GlassPanel>
+  );
+
+  const playPanel = (
+    <GlassPanel title="Escolha um mundo para jogar" subtitle="Nada de uma página gigante e confusa: agora a criança entra pelo menu e toca no mundo desejado para abrir uma janela do jogo." badge="Launcher de jogos" art={gameArt}>
+      <div className="grid gap-5 xl:grid-cols-[1.08fr_0.92fr]">
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {worlds.map((world) => (
+            <button key={world.game} type="button" onClick={() => setSelectedWorld(world.game)} className={`group overflow-hidden rounded-[2rem] bg-[linear-gradient(135deg,var(--tw-gradient-stops))] p-4 text-left shadow-lg ${world.colorClass}`}>
+              <div className="relative overflow-hidden rounded-[1.6rem] border border-white/45">
+                <img src={worldArtwork[world.game]} alt={world.title} className="h-36 w-full object-cover transition duration-500 group-hover:scale-105" />
+                <div className="absolute inset-0 bg-gradient-to-t from-slate-950/55 to-transparent" />
+                <div className="absolute bottom-3 left-3 text-4xl">{worldEmoji[world.game]}</div>
+              </div>
+              <div className="mt-4 text-xl font-black text-slate-950">{world.shortTitle}</div>
+              <div className="mt-2 text-sm font-semibold text-slate-800">{world.age} • {world.description}</div>
+              <div className="mt-4 rounded-full bg-white/85 px-4 py-3 text-center text-sm font-black text-indigo-700 shadow-sm">Abrir mundo</div>
+            </button>
+          ))}
+        </div>
+        <div className="rounded-[2rem] bg-white/82 p-4 shadow-sm">
+          {selectedWorld ? (
+            <>
+              <div className="mb-4 flex items-center justify-between gap-3">
+                <div>
+                  <div className="text-sm font-black uppercase tracking-[0.18em] text-indigo-500">Mundo selecionado</div>
+                  <div className="mt-1 text-2xl font-black text-slate-950">{formatWorldName(selectedWorld)}</div>
+                </div>
+                <button type="button" onClick={() => openPhase(worldPhaseOrder[selectedWorld][0])} className="rounded-full bg-[linear-gradient(135deg,#84cc16,#10b981)] px-4 py-3 text-sm font-black text-white shadow-lg">Jogar fase 1</button>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                {worldPhaseOrder[selectedWorld].map((phaseId, index) => {
+                  const phase = phaseMap[phaseId];
+                  const completed = activeProgress.completedPhases.includes(phaseId);
+                  return (
+                    <button key={phaseId} type="button" onClick={() => openPhase(phaseId)} className={`rounded-[1.5rem] border p-4 text-left shadow-sm ${completed ? 'border-emerald-200 bg-emerald-50' : 'border-indigo-100 bg-slate-50'}`}>
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="text-sm font-black uppercase tracking-[0.18em] text-indigo-500">Fase {index + 1}</div>
+                        <div className="text-xl">{completed ? '✅' : '🎮'}</div>
+                      </div>
+                      <div className="mt-2 text-lg font-black text-slate-950">{phase.title}</div>
+                      <div className="mt-2 text-sm text-slate-700">{phase.description}</div>
+                    </button>
+                  );
+                })}
+              </div>
+            </>
           ) : (
-            <EmptyMessage text="Nenhuma trilha carregada para esta idade." />
+            <>
+              <img src={gameArt} alt="Exemplo visual do jogo" className="h-72 w-full rounded-[1.8rem] object-cover shadow-sm" />
+              <div className="mt-4 rounded-[1.5rem] bg-[linear-gradient(135deg,#eff6ff,#f5f3ff)] p-4 text-sm leading-relaxed text-slate-700">
+                Toque em um mundo à esquerda. Cada escolha abre um catálogo de fases pronto para jogar em uma janela flutuante, com visual mais infantil e menos bagunça.
+              </div>
+            </>
           )}
         </div>
-      </section>
+      </div>
+    </GlassPanel>
+  );
 
-      <section className="dashboard-panels-grid">
-        <div className="kid-panel card-panel">
-          <SectionHeading eyebrow="Mapa favorito" title={world.title} icon={<Map size={20} />} />
-          <div className="world-preview-card">
-            <div className="world-preview-header">
-              <span className="world-preview-emoji">{worldIllustrations[world.game]}</span>
-              <div>
-                <strong>{world.shortTitle}</strong>
-                <p>{world.description}</p>
-              </div>
+  const packsPanel = (
+    <GlassPanel title="Packs organizados por idade e tema" subtitle="Os packs da V6 seguem ativos e agora aparecem em cards grandes, claros e fáceis de abrir." badge="Catálogo de packs">
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        {contentPacks.map((pack) => (
+          <div key={pack.id} className={`rounded-[2rem] bg-[linear-gradient(135deg,var(--tw-gradient-stops))] p-5 shadow-lg ${pack.accentClass}`}>
+            <div className="text-sm font-black uppercase tracking-[0.18em] text-slate-700">{pack.ageLabel}</div>
+            <div className="mt-2 text-2xl font-black text-slate-950">{pack.title}</div>
+            <div className="mt-2 text-sm font-semibold text-slate-800">{pack.description}</div>
+            <div className="mt-4 flex flex-wrap gap-2">
+              {pack.featureBullets.slice(0, 3).map((bullet) => <span key={bullet} className="rounded-full bg-white/80 px-3 py-1 text-xs font-black uppercase tracking-[0.12em] text-slate-800">{bullet}</span>)}
             </div>
-            <div className="progress-mini-grid">
-              <ProgressBubble label="Fases prontas" value={`${worldProgress}/12`} tone={progressTone(worldProgress, 12)} />
-              <ProgressBubble label="Próxima fase" value={phaseMap[nextPhaseId]?.title ?? 'Fase 1'} tone="is-good" />
-            </div>
-            <button type="button" className="mini-pill-button" onClick={() => onOpenPanel('map')}>Abrir mapa</button>
+            <button type="button" onClick={() => openPhase(pack.phaseIds[0])} className="mt-5 rounded-full bg-slate-900 px-5 py-3 text-sm font-black text-white shadow-lg">Abrir pack</button>
           </div>
-        </div>
-        <div className="kid-panel card-panel">
-          <SectionHeading eyebrow="Brilho e prêmios" title="Tesouro do jogador" icon={<Gift size={20} />} />
-          <div className="reward-mini-list">
-            {rewardMilestones.slice(0, 4).map((milestone) => (
-              <div key={milestone.label} className={cn('reward-mini-card', totalStars >= milestone.threshold && 'is-unlocked')}>
-                <span>🏅</span>
-                <div>
-                  <strong>{milestone.label}</strong>
-                  <small>{milestone.threshold} estrelas</small>
-                </div>
+        ))}
+      </div>
+    </GlassPanel>
+  );
+
+  const eventsPanel = (
+    <GlassPanel title="Eventos que deixam o app vivo" subtitle="Campanhas visuais, recompensas temáticas e objetivos simples ajudam a criança a voltar para brincar." badge="Eventos sazonais" art={rewardsArt}>
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        {seasonalEvents.map((event) => (
+          <div key={event.id} className={`rounded-[2rem] bg-[linear-gradient(135deg,var(--tw-gradient-stops))] p-5 text-white shadow-lg ${event.palette}`}>
+            <div className="text-4xl">{event.emoji}</div>
+            <div className="mt-3 text-2xl font-black">{event.title}</div>
+            <div className="mt-2 text-sm font-semibold text-white/90">{event.subtitle}</div>
+            <div className="mt-4 rounded-[1.4rem] bg-white/18 p-3 text-sm font-semibold">Meta: {event.targetCompletions} conclusões • prêmio: {event.rewardLabel}</div>
+            <button type="button" onClick={() => openPhase(worldPhaseOrder[event.world][0])} className="mt-4 rounded-full bg-white/88 px-4 py-3 text-sm font-black text-slate-900 shadow">Participar</button>
+          </div>
+        ))}
+      </div>
+    </GlassPanel>
+  );
+
+  const rewardsPanel = (
+    <GlassPanel title="Baús, selos e conquistas" subtitle="O sistema de recompensas ficou mais próximo das referências premium, com blocos grandes e chamativos." badge="Sala de recompensas" art={rewardsArt}>
+      <div className="grid gap-5 xl:grid-cols-[1.1fr_0.9fr]">
+        <div className="rounded-[2rem] bg-white/82 p-4 shadow-sm">
+          <img src={rewardsArt} alt="Referência visual de recompensas" className="h-72 w-full rounded-[1.8rem] object-cover shadow-sm" />
+          <div className="mt-4 grid gap-3 md:grid-cols-3">
+            {['Baú dourado', 'Pacote de adesivos', 'Troféu estudioso'].map((reward, index) => (
+              <div key={reward} className="rounded-[1.5rem] bg-[linear-gradient(135deg,#fff7ed,#fdf2f8)] p-4 shadow-sm">
+                <div className="text-3xl">{index === 0 ? '🧰' : index === 1 ? '🎁' : '🏆'}</div>
+                <div className="mt-2 text-base font-black text-slate-950">{reward}</div>
+                <div className="mt-2 text-sm text-slate-700">Pronto para abrir com uma animação suave e visual infantil.</div>
               </div>
             ))}
           </div>
-          <button type="button" className="mini-pill-button" onClick={() => onOpenPanel('rewards')}>Abrir tesouro</button>
         </div>
-      </section>
-
-      <section className="kid-panel card-panel">
-        <SectionHeading eyebrow="Guia para adultos" title="Sem termos técnicos, só orientações claras" icon={<ShieldCheck size={20} />} />
-        <div className="parents-soft-grid">
-          {methodologyCards.slice(0, 4).map((item, index) => (
-            <motion.div key={item.title} className="parent-soft-card" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 * index }}>
-              <span className="parent-soft-emoji">{['📦', '🧠', '🛟', '🚀'][index]}</span>
-              <strong>{item.title}</strong>
-              <p>{item.desc}</p>
-            </motion.div>
-          ))}
-        </div>
-      </section>
-    </div>
-  );
-}
-
-type FloatingWindowProps = {
-  title: string;
-  subtitle: string;
-  onClose: () => void;
-  wide?: boolean;
-  children: React.ReactNode;
-};
-
-function FloatingWindow({ title, subtitle, onClose, wide, children }: FloatingWindowProps) {
-  return (
-    <motion.div className="floating-overlay" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-      <motion.section
-        className={cn('floating-window', wide && 'is-wide')}
-        initial={{ opacity: 0, y: 30, scale: 0.96 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        exit={{ opacity: 0, y: 30, scale: 0.96 }}
-        transition={{ type: 'spring', stiffness: 260, damping: 25 }}
-      >
-        <div className="floating-head">
-          <div>
-            <span className="eyebrow-chip">🌟 Janela de aventura</span>
-            <h2>{title}</h2>
-            <p>{subtitle}</p>
-          </div>
-          <button type="button" className="circle-button" onClick={onClose} aria-label="Fechar janela">
-            <X size={20} />
-          </button>
-        </div>
-        <div className="floating-body">{children}</div>
-      </motion.section>
-    </motion.div>
-  );
-}
-
-type PacksPanelProps = {
-  packs: PackCard[];
-  activeAge: number;
-  progressMap: ProgressMap;
-  selectedPackId: string;
-  onSelectPack: (id: string) => void;
-  onPlayPhase: (phaseId: string, sourceLabel: string) => void;
-};
-
-function PacksPanel({ packs, activeAge, progressMap, selectedPackId, onSelectPack, onPlayPhase }: PacksPanelProps) {
-  const selectedPack = packs.find((pack) => pack.id === selectedPackId) ?? packs[0] ?? null;
-
-  return (
-    <div className="window-grid two-columns">
-      <div className="panel-column list-column">
-        <div className="section-banner">
-          <strong>Packs para {activeAge} anos</strong>
-          <span>Toque em um pack para ver as fases grandes e coloridas.</span>
-        </div>
-        <div className="pack-list">
-          {packs.map((pack) => {
-            const stars = pack.phaseIds.reduce((acc, phaseId) => acc + (progressMap[phaseId]?.bestStars ?? 0), 0);
-            return (
-              <button type="button" key={pack.id} className={cn('pack-list-item', selectedPack?.id === pack.id && 'is-active')} onClick={() => onSelectPack(pack.id)}>
-                <div className="pack-list-emoji" style={{ background: `linear-gradient(135deg, ${pack.colorA}, ${pack.colorB})` }}>{pack.illustration}</div>
-                <div>
-                  <strong>{pack.title}</strong>
-                  <span>{pack.themeLabel} · {pack.ageLabel}</span>
-                </div>
-                <small>{stars}⭐</small>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-      <div className="panel-column detail-column">
-        {selectedPack ? (
-          <>
-            <div className="pack-hero-card" style={{ background: `linear-gradient(135deg, ${selectedPack.colorA}, ${selectedPack.colorB})` }}>
-              <span className="pack-hero-emoji">{selectedPack.illustration}</span>
-              <div>
-                <h3>{selectedPack.title}</h3>
-                <p>{selectedPack.description}</p>
-              </div>
+        <div className="grid gap-4">
+          <div className="rounded-[2rem] bg-[linear-gradient(135deg,#ede9fe,#fdf2f8)] p-5 shadow-sm">
+            <div className="text-sm font-black uppercase tracking-[0.18em] text-violet-600">Próximo grande marco</div>
+            <div className="mt-3 text-3xl font-black text-slate-950">{activeProgress.stars} / 2500</div>
+            <div className="mt-2 h-4 overflow-hidden rounded-full bg-white/70">
+              <div className="h-full rounded-full bg-[linear-gradient(135deg,#f59e0b,#f43f5e)]" style={{ width: `${Math.min(100, (activeProgress.stars / 2500) * 100)}%` }} />
             </div>
-            <div className="chip-row">
-              {selectedPack.featureBullets.map((bullet) => (
-                <span className="magic-chip" key={bullet}>{bullet}</span>
+          </div>
+          <div className="rounded-[2rem] bg-[linear-gradient(135deg,#dcfce7,#ecfccb)] p-5 shadow-sm">
+            <div className="text-sm font-black uppercase tracking-[0.18em] text-emerald-600">Itens desbloqueados</div>
+            <div className="mt-3 grid gap-3 sm:grid-cols-2">
+              {['Estelinha', 'Dinossauro Lilás', 'Medalha do Saber', 'Baú de Moedas'].map((item) => (
+                <div key={item} className="rounded-[1.4rem] bg-white/82 p-3 text-sm font-black text-slate-900 shadow-sm">✅ {item}</div>
               ))}
             </div>
-            <div className="game-chip-row">
-              {packToGameKeys(selectedPack).map((game) => (
-                <span key={game} className="game-key-chip">{worldIllustrations[game]} {worlds.find((item) => item.game === game)?.shortTitle}</span>
+          </div>
+          <button type="button" onClick={() => setToast('Recompensa aberta!')} className="rounded-[1.8rem] bg-[linear-gradient(135deg,#ef4444,#ec4899)] px-5 py-5 text-lg font-black text-white shadow-lg">Abrir recompensa agora</button>
+        </div>
+      </div>
+    </GlassPanel>
+  );
+
+  const parentsPanel = (
+    <GlassPanel title="Painel dos pais" subtitle="Acompanhamento claro, bonito e útil, com progresso por mundo, tempo de uso e trilha semanal sugerida." badge="Painel familiar" art={parentsArt}>
+      <div className="grid gap-5 xl:grid-cols-[1.05fr_0.95fr]">
+        <div className="grid gap-4 md:grid-cols-2">
+          <div className="rounded-[2rem] bg-white/82 p-5 shadow-sm">
+            <div className="text-sm font-black uppercase tracking-[0.18em] text-indigo-600">Tempo de uso</div>
+            <div className="mt-3 text-4xl font-black text-slate-950">1h 25min</div>
+            <div className="mt-2 text-sm text-slate-600">Recomendado: até 2h por dia.</div>
+          </div>
+          <div className="rounded-[2rem] bg-white/82 p-5 shadow-sm">
+            <div className="text-sm font-black uppercase tracking-[0.18em] text-emerald-600">Mundo favorito</div>
+            <div className="mt-3 text-4xl">{worldEmoji[activeProgress.favoriteWorld]}</div>
+            <div className="mt-2 text-2xl font-black text-slate-950">{formatWorldName(activeProgress.favoriteWorld)}</div>
+          </div>
+          <div className="rounded-[2rem] bg-white/82 p-5 shadow-sm md:col-span-2">
+            <div className="text-sm font-black uppercase tracking-[0.18em] text-violet-600">Trilha sugerida para {activeProfile.age} anos</div>
+            <div className="mt-3 text-2xl font-black text-slate-950">{activeTrack.title}</div>
+            <div className="mt-2 text-sm text-slate-700">{activeTrack.description}</div>
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              {activeTrack.days.map((day) => (
+                <div key={day.day} className="rounded-[1.4rem] bg-[linear-gradient(135deg,#eef2ff,#f8fafc)] p-3 shadow-sm">
+                  <div className="text-xs font-black uppercase tracking-[0.18em] text-indigo-500">{day.day}</div>
+                  <div className="mt-1 text-base font-black text-slate-950">{day.title}</div>
+                  <div className="mt-1 text-sm text-slate-700">{day.goal}</div>
+                </div>
               ))}
             </div>
-            <div className="phase-grid">
-              {selectedPack.phaseIds.map((phaseId) => {
-                const phase = phaseMap[phaseId];
-                if (!phase) return null;
-                const progress = progressMap[phaseId];
-                return (
-                  <button type="button" key={phaseId} className={cn('phase-card', !isPhaseUnlocked(phaseId, progressMap) && 'is-locked')} onClick={() => isPhaseUnlocked(phaseId, progressMap) && onPlayPhase(phaseId, `Pack · ${selectedPack.title}`)}>
-                    <span className="phase-card-world">{worldIllustrations[phase.game]}</span>
-                    <strong>{phase.title}</strong>
-                    <p>{phase.reward}</p>
-                    <div className="phase-card-footer">
-                      <span>{progress?.bestStars ?? 0}⭐</span>
-                      <span>{isPhaseUnlocked(phaseId, progressMap) ? 'Abrir' : 'Bloqueada'}</span>
-                    </div>
-                  </button>
-                );
-              })}
+          </div>
+        </div>
+        <div className="rounded-[2rem] bg-white/82 p-4 shadow-sm">
+          <img src={parentsArt} alt="Referência do painel dos pais" className="h-64 w-full rounded-[1.8rem] object-cover shadow-sm" />
+          <div className="mt-4 rounded-[1.6rem] bg-[linear-gradient(135deg,#eff6ff,#f0fdf4)] p-4">
+            <div className="text-sm font-black uppercase tracking-[0.18em] text-indigo-600">Controles rápidos</div>
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              {['Áudio', 'Tempo de tela', 'Conteúdo por idade', 'Relatórios'].map((item) => (
+                <button key={item} type="button" className="rounded-[1.4rem] bg-white/88 px-4 py-4 text-sm font-black text-slate-900 shadow-sm">{item}</button>
+              ))}
             </div>
-          </>
-        ) : (
-          <EmptyMessage text="Nenhum pack encontrado para esta faixa etária." />
-        )}
+          </div>
+        </div>
       </div>
-    </div>
+    </GlassPanel>
   );
-}
 
-type EventsPanelProps = {
-  events: SeasonalEvent[];
-  progressMap: ProgressMap;
-};
-
-function EventsPanel({ events, progressMap }: EventsPanelProps) {
-  return (
-    <div className="event-grid">
-      {events.map((event) => {
-        const completions = worldCompletionCount(event.world, progressMap);
-        const ratio = Math.min(1, completions / event.targetCompletions);
-        return (
-          <article key={event.id} className="event-card">
-            <div className={cn('event-banner', event.palette)}>
-              <span>{event.emoji}</span>
-              <div>
-                <strong>{event.title}</strong>
-                <small>{event.monthRange}</small>
-              </div>
-            </div>
-            <p>{event.subtitle}</p>
-            <div className="progress-strip">
-              <div className="progress-strip-fill" style={{ width: `${ratio * 100}%` }} />
-            </div>
-            <div className="event-meta-row">
-              <span>{completions}/{event.targetCompletions} missões</span>
-              <span>{event.rewardStars}⭐</span>
-            </div>
-            <div className="event-prize-card">🏆 {event.rewardLabel}</div>
-          </article>
-        );
-      })}
-    </div>
-  );
-}
-
-type TracksPanelProps = {
-  tracks: ParentWeeklyTrack[];
-  onPlayPhase: (phaseId: string, sourceLabel: string) => void;
-};
-
-function TracksPanel({ tracks, onPlayPhase }: TracksPanelProps) {
-  const [trackIndex, setTrackIndex] = useState(0);
-  const active = tracks[trackIndex] ?? null;
-  const suggestedPhase = active?.world ? worldPhaseOrder[active.world][0] : null;
-
-  useEffect(() => {
-    setTrackIndex(0);
-  }, [tracks.length]);
-
-  if (!active) return <EmptyMessage text="Nenhuma trilha disponível." />;
-
-  return (
-    <div className="window-grid two-columns">
-      <div className="panel-column list-column">
-        {tracks.map((track, index) => (
-          <button type="button" key={track.id} className={cn('track-list-item', index === trackIndex && 'is-active')} onClick={() => setTrackIndex(index)}>
-            <span>{track.world ? worldIllustrations[track.world] : '🌟'}</span>
-            <div>
-              <strong>{track.title}</strong>
-              <small>{track.ageMin}–{track.ageMax} anos</small>
-            </div>
+  const settingsPanel = (
+    <GlassPanel title="Configurações rápidas" subtitle="Área simples para ligar e desligar recursos sem quebrar a estética do app." badge="Ajustes do app">
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        {[
+          { label: 'Áudio', value: audioEnabled ? 'Ligado' : 'Desligado', onClick: () => setAudioEnabled((value) => !value) },
+          { label: 'Modo criança', value: 'Ativo', onClick: () => setToast('Modo criança já está ativo.') },
+          { label: 'Catálogo', value: catalogStatus === 'remote' ? 'Remoto' : 'Local', onClick: () => setToast('Catálogo carregado com sucesso.') },
+          { label: 'Segurança', value: 'Pais', onClick: () => setPanel('parents') },
+        ].map((item) => (
+          <button key={item.label} type="button" onClick={item.onClick} className="rounded-[2rem] bg-[linear-gradient(135deg,#eef2ff,#fff7ed)] p-5 text-left shadow-sm">
+            <div className="text-sm font-black uppercase tracking-[0.18em] text-indigo-500">{item.label}</div>
+            <div className="mt-3 text-2xl font-black text-slate-950">{item.value}</div>
           </button>
         ))}
       </div>
-      <div className="panel-column detail-column">
-        <div className="track-detail-card">
-          <div className="panel-heading-row">
-            <SectionHeading eyebrow="Plano da semana" title={active.title} icon={<BookOpen size={20} />} />
-            {suggestedPhase && <button type="button" className="mini-pill-button" onClick={() => onPlayPhase(suggestedPhase, `Trilha · ${active.title}`)}>Abrir jogo</button>}
-          </div>
-          <p>{active.description}</p>
-          <div className="weekday-grid">
-            {active.days.map((day) => (
-              <article key={day.day} className="weekday-card">
-                <span className="weekday-pill">{day.day}</span>
-                <strong>{day.title}</strong>
-                <p>{day.goal}</p>
-                <div className="weekday-mini-box">
-                  <span>🎮</span>
-                  <small>{day.screen}</small>
-                </div>
-                <div className="weekday-mini-box is-soft">
-                  <span>🏡</span>
-                  <small>{day.offline}</small>
-                </div>
-              </article>
-            ))}
-          </div>
-        </div>
-      </div>
-    </div>
+    </GlassPanel>
   );
-}
 
-type MapPanelProps = {
-  progressMap: ProgressMap;
-  onPlayPhase: (phaseId: string, sourceLabel: string) => void;
-  selectedWorld: GameKey;
-  onSelectWorld: (game: GameKey) => void;
-};
-
-function MapPanel({ progressMap, onPlayPhase, selectedWorld, onSelectWorld }: MapPanelProps) {
-  const world = worlds.find((item) => item.game === selectedWorld) ?? worlds[0];
-  return (
-    <div className="window-grid two-columns">
-      <div className="panel-column list-column world-list-column">
-        {worlds.map((item) => {
-          const done = worldCompletionCount(item.game, progressMap);
-          return (
-            <button type="button" key={item.game} className={cn('world-list-item', selectedWorld === item.game && 'is-active')} onClick={() => onSelectWorld(item.game)}>
-              <span className="world-list-emoji">{worldIllustrations[item.game]}</span>
-              <div>
-                <strong>{item.title}</strong>
-                <small>{done}/12 fases</small>
-              </div>
-            </button>
-          );
-        })}
-      </div>
-      <div className="panel-column detail-column">
-        <div className={cn('world-hero-card', worldAccent[world.game])}>
-          <div className="world-hero-copy">
-            <span className="world-hero-emoji">{worldIllustrations[world.game]}</span>
-            <div>
-              <h3>{world.title}</h3>
-              <p>{world.description}</p>
-            </div>
-          </div>
-          <div className="progress-mini-grid compact">
-            <ProgressBubble label="Fases" value={`${worldCompletionCount(world.game, progressMap)}/12`} tone={progressTone(worldCompletionCount(world.game, progressMap), 12)} />
-            <ProgressBubble label="Estrelas" value={`${worldStarCount(world.game, progressMap)}`} tone="is-good" />
-          </div>
-        </div>
-        <div className="phase-grid">
-          {worldPhaseOrder[world.game].map((phaseId) => {
-            const phase = phaseMap[phaseId];
-            const unlocked = isPhaseUnlocked(phaseId, progressMap);
-            const progress = progressMap[phaseId];
-            return (
-              <button key={phaseId} type="button" className={cn('phase-card', !unlocked && 'is-locked')} onClick={() => unlocked && onPlayPhase(phaseId, `Mapa · ${world.title}`)}>
-                <span className="phase-card-world">{worldIllustrations[world.game]}</span>
-                <strong>{phase.title}</strong>
-                <p>{phase.reward}</p>
-                <div className="phase-card-footer">
-                  <span>{progress?.bestStars ?? 0}⭐</span>
-                  <span>{unlocked ? 'Abrir' : 'Bloqueada'}</span>
-                </div>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-type PlayPanelProps = {
-  packs: PackCard[];
-  progressMap: ProgressMap;
-  selectedWorld: GameKey;
-  setSelectedWorld: (game: GameKey) => void;
-  onPlayPhase: (phaseId: string, sourceLabel: string) => void;
-};
-
-function PlayPanel({ packs, progressMap, selectedWorld, setSelectedWorld, onPlayPhase }: PlayPanelProps) {
-  const randomPack = packs[Math.floor(Math.random() * Math.max(packs.length, 1))] ?? packs[0] ?? null;
-  const world = worlds.find((item) => item.game === selectedWorld) ?? worlds[0];
-  const nextPhase = nextUnlockedPhaseId(world.game, progressMap);
+  const panelNode = panel === 'home'
+    ? homePanel
+    : panel === 'map'
+      ? mapPanel
+      : panel === 'play'
+        ? playPanel
+        : panel === 'packs'
+          ? packsPanel
+          : panel === 'events'
+            ? eventsPanel
+            : panel === 'rewards'
+              ? rewardsPanel
+              : panel === 'parents'
+                ? parentsPanel
+                : settingsPanel;
 
   return (
-    <div className="play-grid">
-      <article className="play-launch-card is-primary">
-        <span className="big-emoji">{worldIllustrations[world.game]}</span>
-        <h3>Continuar de onde parou</h3>
-        <p>Entre direto na próxima fase aberta do seu mundo favorito.</p>
-        <button type="button" className="primary-big-button" onClick={() => onPlayPhase(nextPhase, `Continuar · ${world.title}`)}>
-          <Play size={18} /> Abrir {phaseMap[nextPhase]?.title}
-        </button>
-      </article>
-      <article className="play-launch-card">
-        <span className="big-emoji">🎁</span>
-        <h3>Modo surpresa</h3>
-        <p>Escolhe uma aventura divertida sem a criança precisar procurar demais.</p>
-        {randomPack ? <button type="button" className="secondary-big-button" onClick={() => onPlayPhase(randomPack.phaseIds[0], `Modo surpresa · ${randomPack.title}`)}>Surpresa agora</button> : <EmptyMessage text="Sem pack carregado." />}
-      </article>
-      <article className="play-launch-card wide-card">
-        <h3>Escolha um mundo para jogar</h3>
-        <div className="world-pill-row">
-          {worlds.map((item) => (
-            <button type="button" key={item.game} className={cn('world-pill', selectedWorld === item.game && 'is-active')} onClick={() => setSelectedWorld(item.game)}>
-              {worldIllustrations[item.game]} {item.shortTitle}
-            </button>
-          ))}
-        </div>
-        <div className="play-phase-row">
-          {worldPhaseOrder[selectedWorld].slice(0, 6).map((phaseId) => (
-            <button type="button" key={phaseId} className={cn('mini-phase-button', !isPhaseUnlocked(phaseId, progressMap) && 'is-locked')} onClick={() => isPhaseUnlocked(phaseId, progressMap) && onPlayPhase(phaseId, `Jogar · ${world.title}`)}>
-              <strong>{phaseMap[phaseId].title}</strong>
-              <small>{progressMap[phaseId]?.bestStars ?? 0}⭐</small>
-            </button>
-          ))}
-        </div>
-      </article>
-    </div>
-  );
-}
-
-type RewardsPanelProps = {
-  progressMap: ProgressMap;
-  totalStars: number;
-  totalCompleted: number;
-};
-
-function RewardsPanel({ progressMap, totalStars, totalCompleted }: RewardsPanelProps) {
-  return (
-    <div className="rewards-layout">
-      <div className="reward-summary-banner">
-        <StatBubble label="Estrelas coletadas" value={String(totalStars)} tone="gold" />
-        <StatBubble label="Fases concluídas" value={String(totalCompleted)} tone="blue" />
-        <StatBubble label="Mundos tocados" value={String(worlds.filter((world) => worldCompletionCount(world.game, progressMap) > 0).length)} tone="pink" />
+    <div className="min-h-screen bg-[radial-gradient(circle_at_top_left,#fef3c7_0%,#eef2ff_26%,#dbeafe_48%,#fdf2f8_78%,#fff7ed_100%)] text-slate-900">
+      <div className="pointer-events-none fixed inset-0 overflow-hidden">
+        <div className="absolute -left-24 top-10 h-72 w-72 rounded-full bg-fuchsia-300/25 blur-3xl" />
+        <div className="absolute right-0 top-24 h-80 w-80 rounded-full bg-sky-300/25 blur-3xl" />
+        <div className="absolute bottom-0 left-1/3 h-72 w-72 rounded-full bg-yellow-300/20 blur-3xl" />
       </div>
-      <div className="reward-milestone-grid">
-        {rewardMilestones.map((reward) => (
-          <div key={reward.label} className={cn('reward-milestone-card', totalStars >= reward.threshold && 'is-unlocked')}>
-            <span>🏅</span>
-            <strong>{reward.label}</strong>
-            <small>{reward.threshold} estrelas</small>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-type ParentsPanelProps = {
-  profile: ChildProfile;
-  tracks: ParentWeeklyTrack[];
-  infra: InfrastructureHealthPayload | null;
-};
-
-function ParentsPanel({ profile, tracks, infra }: ParentsPanelProps) {
-  const suggestedAgeTrack = ageTracks.find((track) => track.age.startsWith(String(profile.age))) ?? ageTracks[0];
-  return (
-    <div className="parents-grid">
-      <article className="parent-dashboard-card">
-        <SectionHeading eyebrow="Resumo rápido" title="O que vale abrir hoje" icon={<Users size={20} />} />
-        <div className="parent-soft-card is-strong">
-          <strong>{suggestedAgeTrack.age}</strong>
-          <p>{suggestedAgeTrack.content}</p>
-        </div>
-        <div className="parent-mini-grid">
-          <div className="parent-mini-card"><strong>{tracks.length}</strong><span>trilhas sugeridas</span></div>
-          <div className="parent-mini-card"><strong>{infra?.supabaseReachable ? 'online' : 'checando'}</strong><span>catálogo remoto</span></div>
-          <div className="parent-mini-card"><strong>{profile.age} anos</strong><span>faixa ativa</span></div>
-        </div>
-      </article>
-      <article className="parent-dashboard-card">
-        <SectionHeading eyebrow="Dicas claras" title="Como usar sem cansar a criança" icon={<ShieldCheck size={20} />} />
-        <div className="faq-list compact-faq">
-          {faqData.slice(0, 4).map((item) => (
-            <div key={item.q} className="faq-card">
-              <strong>{item.q}</strong>
-              <p>{item.a}</p>
-            </div>
-          ))}
-        </div>
-      </article>
-    </div>
-  );
-}
-
-type ProfilePanelProps = {
-  profiles: ChildProfile[];
-  activeProfileId: string;
-  onSetActive: (id: string) => void;
-  onUpdateProfiles: (profiles: ChildProfile[]) => void;
-};
-
-function ProfilePanel({ profiles, activeProfileId, onSetActive, onUpdateProfiles }: ProfilePanelProps) {
-  const active = profiles.find((item) => item.id === activeProfileId) ?? profiles[0];
-  const updateActive = (partial: Partial<ChildProfile>) => {
-    onUpdateProfiles(profiles.map((profile) => (profile.id === active.id ? { ...profile, ...partial } : profile)));
-  };
-
-  return (
-    <div className="profile-layout">
-      <div className="profile-card-grid">
-        {profiles.map((profile) => (
-          <button type="button" key={profile.id} className={cn('profile-switch-card', profile.id === active.id && 'is-active')} onClick={() => onSetActive(profile.id)}>
-            <span className="profile-switch-avatar">{profile.avatar}</span>
-            <div>
-              <strong>{profile.name}</strong>
-              <small>{profile.age} anos · {profile.buddy}</small>
-            </div>
-          </button>
-        ))}
-        <button type="button" className="profile-switch-card add-card" onClick={() => onUpdateProfiles([...profiles, createProfile(profiles.length)])}>
-          <span className="profile-switch-avatar">➕</span>
-          <div>
-            <strong>Novo perfil</strong>
-            <small>Adicionar outro jogador</small>
-          </div>
-        </button>
-      </div>
-      <div className="profile-editor-card">
-        <SectionHeading eyebrow="Editar personagem" title={active.name} icon={<UserRound size={20} />} />
-        <label className="editor-field">
-          <span>Nome</span>
-          <input value={active.name} onChange={(event) => updateActive({ name: event.target.value })} />
-        </label>
-        <label className="editor-field">
-          <span>Idade</span>
-          <input type="range" min={4} max={7} value={active.age} onChange={(event) => updateActive({ age: Number(event.target.value) })} />
-          <strong>{active.age} anos</strong>
-        </label>
-        <div className="emoji-picker-grid">
-          {avatarOptions.map((option) => (
-            <button type="button" key={option.label} className={cn('emoji-picker', active.avatar === option.emoji && 'is-active')} onClick={() => updateActive({ avatar: option.emoji })}>
-              {option.emoji}
-            </button>
-          ))}
-        </div>
-        <div className="emoji-picker-grid small-grid">
-          {buddyOptions.map((option) => (
-            <button type="button" key={option.label} className={cn('emoji-picker small', active.buddy === option.emoji && 'is-active')} onClick={() => updateActive({ buddy: option.emoji })}>
-              {option.emoji}
-            </button>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-type GameStageProps = {
-  phase?: GamePhase;
-  progress: MiniProgress;
-  soundEnabled: boolean;
-  onPlayed: () => void;
-  onComplete: (stars: number, score: number) => void;
-};
-
-function GameStage({ phase, progress, soundEnabled, onPlayed, onComplete }: GameStageProps) {
-  useEffect(() => {
-    onPlayed();
-  }, [phase?.id]);
-
-  if (!phase) return <EmptyMessage text="Fase não encontrada." />;
-
-  return (
-    <div className="game-stage-shell">
-      <div className="game-stage-summary">
-        <div className="summary-card">
-          <span>{worldIllustrations[phase.game]}</span>
-          <div>
-            <strong>{phase.reward}</strong>
-            <small>{progress.bestStars}⭐ melhor resultado</small>
-          </div>
-        </div>
-        <div className="summary-card soft">
-          <span>{soundEnabled ? '🔊' : '🔇'}</span>
-          <div>
-            <strong>{phase.description}</strong>
-            <small>Toques grandes, leitura simples e animação leve.</small>
+      <div className="relative mx-auto flex min-h-screen max-w-[1600px] gap-4 px-3 py-3 md:px-5 md:py-5">
+        {sidebar}
+        <div className="flex min-w-0 flex-1 flex-col gap-4">
+          {topBar}
+          <div className="relative min-h-[calc(100vh-128px)]">
+            <AnimatePresence mode="wait">{panelNode}</AnimatePresence>
           </div>
         </div>
       </div>
 
-      {phase.game === 'memory' && <MemoryGame phase={phase} onComplete={onComplete} />}
-      {phase.game === 'alphabet' && <AlphabetGame phase={phase} onComplete={onComplete} />}
-      {phase.game === 'math' && <MathGame phase={phase} onComplete={onComplete} />}
-      {phase.game === 'shape' && <ShapeGame phase={phase} onComplete={onComplete} />}
-      {phase.game === 'colors' && <ColorsGame phase={phase} onComplete={onComplete} />}
-      {phase.game === 'maze' && <MazeGame phase={phase} onComplete={onComplete} />}
-      {phase.game === 'puzzle' && <PuzzleGame phase={phase} onComplete={onComplete} />}
-    </div>
-  );
-}
-
-type GameComplete = (stars: number, score: number) => void;
-
-function MemoryGame({ phase, onComplete }: { phase: MemoryPhase; onComplete: GameComplete }) {
-  const [cards, setCards] = useState<{ id: number; symbol: string; matched: boolean }[]>([]);
-  const [selected, setSelected] = useState<number[]>([]);
-  const [moves, setMoves] = useState(0);
-
-  useEffect(() => {
-    const symbols = sampleFrom(memoryThemePools[phase.theme], phase.pairCount);
-    const deck = sampleFrom([...symbols, ...symbols], symbols.length * 2).map((symbol, index) => ({ id: index, symbol, matched: false }));
-    setCards(deck);
-    setSelected([]);
-    setMoves(0);
-  }, [phase.id]);
-
-  useEffect(() => {
-    if (selected.length !== 2) return;
-    const [a, b] = selected;
-    const cardA = cards.find((item) => item.id === a);
-    const cardB = cards.find((item) => item.id === b);
-    if (!cardA || !cardB) return;
-    const timeout = window.setTimeout(() => {
-      if (cardA.symbol === cardB.symbol) {
-        setCards((current) => current.map((item) => (item.id === a || item.id === b ? { ...item, matched: true } : item)));
-      }
-      setSelected([]);
-    }, 650);
-    return () => window.clearTimeout(timeout);
-  }, [selected, cards]);
-
-  useEffect(() => {
-    if (cards.length && cards.every((item) => item.matched)) {
-      const stars = moves <= phase.movesFor3Stars ? 3 : moves <= phase.movesFor2Stars ? 2 : 1;
-      onComplete(stars, Math.max(0, 120 - moves * 5));
-    }
-  }, [cards, moves]);
-
-  return (
-    <div className="game-panel">
-      <div className="game-helper">Encontre os pares iguais. Toque em dois cartões por vez.</div>
-      <div className="memory-grid" style={{ gridTemplateColumns: `repeat(${Math.min(4, Math.ceil(Math.sqrt(cards.length)))}, minmax(0, 1fr))` }}>
-        {cards.map((card) => {
-          const flipped = selected.includes(card.id) || card.matched;
-          return (
-            <button
-              type="button"
-              key={card.id}
-              className={cn('memory-card', flipped && 'is-flipped')}
-              disabled={flipped || selected.length === 2}
-              onClick={() => {
-                setMoves((current) => current + 1);
-                setSelected((current) => [...current, card.id]);
-              }}
-            >
-              <span>{flipped ? card.symbol : '✨'}</span>
-            </button>
-          );
-        })}
-      </div>
-      <div className="game-footer-note">Movimentos: {moves}</div>
-    </div>
-  );
-}
-
-function AlphabetGame({ phase, onComplete }: { phase: AlphabetPhase; onComplete: GameComplete }) {
-  const [questions, setQuestions] = useState<typeof alphabetPools.animals>([]);
-  const [index, setIndex] = useState(0);
-  const [hits, setHits] = useState(0);
-  const [feedback, setFeedback] = useState<'idle' | 'correct' | 'wrong'>('idle');
-
-  useEffect(() => {
-    const base = alphabetPools[phase.poolTag] ?? alphabetPools.mixed;
-    setQuestions(sampleFrom(base, phase.questionCount));
-    setIndex(0);
-    setHits(0);
-    setFeedback('idle');
-  }, [phase.id]);
-
-  const current = questions[index];
-  if (!current) return <EmptyMessage text="Preparando letrinhas mágicas…" />;
-
-  const answer = (option: string) => {
-    const correct = option === current.letter;
-    const nextHits = hits + (correct ? 1 : 0);
-    setHits(nextHits);
-    setFeedback(correct ? 'correct' : 'wrong');
-    window.setTimeout(() => {
-      if (index === questions.length - 1) {
-        const ratio = nextHits / questions.length;
-        const stars = ratio >= 0.85 ? 3 : ratio >= 0.55 ? 2 : 1;
-        onComplete(stars, Math.round(ratio * 100));
-      } else {
-        setIndex((value) => value + 1);
-        setFeedback('idle');
-      }
-    }, 550);
-  };
-
-  return (
-    <div className="game-panel quiz-panel">
-      <div className="question-stage">
-        <span className="question-emoji">{current.emoji}</span>
-        <h3>{current.word}</h3>
-        <p>Qual é a letra inicial?</p>
-      </div>
-      <div className="option-grid">
-        {current.options.map((option) => (
-          <button key={option} type="button" className={cn('quiz-option', feedback !== 'idle' && option === current.letter && 'is-correct')} onClick={() => answer(option)}>
-            {option}
-          </button>
-        ))}
-      </div>
-      <div className="game-footer-note">Rodada {index + 1} de {questions.length}</div>
-    </div>
-  );
-}
-
-function buildMathQuestion(phase: MathPhase) {
-  if (phase.mode === 'count') {
-    const count = Math.max(2, Math.floor(Math.random() * phase.maxValue) + 1);
-    const visual = '⭐ '.repeat(count).trim();
-    return {
-      prompt: 'Quantas estrelas você vê?',
-      visual,
-      correct: count,
-      options: sampleFrom([count, count + 1, Math.max(1, count - 1), count + 2], 3),
-    };
-  }
-  if (phase.mode === 'add') {
-    const a = Math.floor(Math.random() * Math.max(2, phase.maxValue - 1)) + 1;
-    const b = Math.floor(Math.random() * Math.max(2, phase.maxValue - 1)) + 1;
-    const correct = a + b;
-    return {
-      prompt: `${a} + ${b} = ?`,
-      visual: '➕',
-      correct,
-      options: sampleFrom([correct, correct + 1, Math.max(0, correct - 1), correct + 2], 3),
-    };
-  }
-  if (phase.mode === 'subtract') {
-    const a = Math.floor(Math.random() * Math.max(3, phase.maxValue)) + 2;
-    const b = Math.floor(Math.random() * Math.min(a - 1, 4)) + 1;
-    const correct = a - b;
-    return {
-      prompt: `${a} - ${b} = ?`,
-      visual: '➖',
-      correct,
-      options: sampleFrom([correct, correct + 1, Math.max(0, correct - 1), correct + 2], 3),
-    };
-  }
-  const start = Math.floor(Math.random() * Math.max(4, phase.maxValue - 3)) + 1;
-  const seq = [start, start + 1, start + 2];
-  const correct = start + 3;
-  return {
-    prompt: `${seq.join(' • ')} • ?`,
-    visual: '🔁',
-    correct,
-    options: sampleFrom([correct, correct + 1, Math.max(1, correct - 1), correct + 2], 3),
-  };
-}
-
-function MathGame({ phase, onComplete }: { phase: MathPhase; onComplete: GameComplete }) {
-  const [index, setIndex] = useState(0);
-  const [hits, setHits] = useState(0);
-  const [question, setQuestion] = useState(buildMathQuestion(phase));
-
-  useEffect(() => {
-    setIndex(0);
-    setHits(0);
-    setQuestion(buildMathQuestion(phase));
-  }, [phase.id]);
-
-  const answer = (value: number) => {
-    const correct = value === question.correct;
-    const nextHits = hits + (correct ? 1 : 0);
-    setHits(nextHits);
-    if (index === phase.questionCount - 1) {
-      const ratio = nextHits / phase.questionCount;
-      const stars = ratio >= 0.8 ? 3 : ratio >= 0.5 ? 2 : 1;
-      onComplete(stars, Math.round(ratio * 100));
-    } else {
-      setIndex((current) => current + 1);
-      setQuestion(buildMathQuestion(phase));
-    }
-  };
-
-  return (
-    <div className="game-panel quiz-panel">
-      <div className="question-stage">
-        <span className="question-emoji">{question.visual}</span>
-        <h3>{question.prompt}</h3>
-        <p>Escolha a resposta certa.</p>
-      </div>
-      <div className="option-grid">
-        {question.options.map((option) => (
-          <button key={option} type="button" className="quiz-option" onClick={() => answer(option)}>
-            {option}
-          </button>
-        ))}
-      </div>
-      <div className="game-footer-note">Pergunta {index + 1} de {phase.questionCount}</div>
-    </div>
-  );
-}
-
-function ShapeGame({ phase, onComplete }: { phase: ShapePhase; onComplete: GameComplete }) {
-  const availableShapes = shapeLibrary.filter((shape) => (phase.shapeSet === 'basic' ? ['circle', 'square', 'triangle'].includes(shape.id) : true));
-  const [index, setIndex] = useState(0);
-  const [hits, setHits] = useState(0);
-  const [target, setTarget] = useState(availableShapes[0]);
-
-  useEffect(() => {
-    setIndex(0);
-    setHits(0);
-    setTarget(sampleFrom(availableShapes, 1)[0]);
-  }, [phase.id]);
-
-  const answer = (id: string) => {
-    const correct = id === target.id;
-    const nextHits = hits + (correct ? 1 : 0);
-    setHits(nextHits);
-    if (index === phase.pieceCount - 1) {
-      const ratio = nextHits / phase.pieceCount;
-      const stars = ratio >= 0.8 ? 3 : ratio >= 0.5 ? 2 : 1;
-      onComplete(stars, Math.round(ratio * 100));
-    } else {
-      setIndex((current) => current + 1);
-      setTarget(sampleFrom(availableShapes, 1)[0]);
-    }
-  };
-
-  return (
-    <div className="game-panel quiz-panel">
-      <div className="question-stage">
-        <span className="question-emoji">{target.label === 'Círculo' ? '⚪' : target.label === 'Quadrado' ? '🟦' : target.label === 'Triângulo' ? '🔺' : target.label === 'Estrela' ? '⭐' : target.label === 'Losango' ? '🔷' : '❤️'}</span>
-        <h3>Toque em: {target.label}</h3>
-        <p>Escolha a forma certa para continuar a jornada.</p>
-      </div>
-      <div className="shape-grid">
-        {availableShapes.map((shape) => (
-          <button key={shape.id} type="button" className="shape-choice" onClick={() => answer(shape.id)} style={{ borderColor: shape.color }}>
-            <span style={{ color: shape.color }}>{shape.label === 'Círculo' ? '⚪' : shape.label === 'Quadrado' ? '🟦' : shape.label === 'Triângulo' ? '🔺' : shape.label === 'Estrela' ? '⭐' : shape.label === 'Losango' ? '🔷' : '❤️'}</span>
-            <strong>{shape.label}</strong>
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function ColorsGame({ phase, onComplete }: { phase: ColorsPhase; onComplete: GameComplete }) {
-  const buckets = colorBuckets.slice(0, phase.bucketCount);
-  const items = sampleFrom(colorItems.filter((item) => buckets.some((bucket) => bucket.id === item.color)), phase.itemCount);
-  const [index, setIndex] = useState(0);
-  const [hits, setHits] = useState(0);
-  const item = items[index];
-
-  useEffect(() => {
-    setIndex(0);
-    setHits(0);
-  }, [phase.id]);
-
-  if (!item) return <EmptyMessage text="Preparando as tintas…" />;
-
-  const answer = (bucketId: ColorBucketId) => {
-    const correct = bucketId === item.color;
-    const nextHits = hits + (correct ? 1 : 0);
-    setHits(nextHits);
-    if (index === items.length - 1) {
-      const ratio = nextHits / items.length;
-      const stars = ratio >= 0.8 ? 3 : ratio >= 0.5 ? 2 : 1;
-      onComplete(stars, Math.round(ratio * 100));
-    } else {
-      setIndex((current) => current + 1);
-    }
-  };
-
-  return (
-    <div className="game-panel quiz-panel">
-      <div className="question-stage">
-        <span className="question-emoji">{item.emoji}</span>
-        <h3>Para qual cor esse item vai?</h3>
-        <p>{item.label}</p>
-      </div>
-      <div className="bucket-choice-grid">
-        {buckets.map((bucket) => (
-          <button key={bucket.id} type="button" className={cn('bucket-choice', bucket.colorClass)} onClick={() => answer(bucket.id)}>
-            {bucket.label}
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function MazeGame({ phase, onComplete }: { phase: MazePhase; onComplete: GameComplete }) {
-  const [steps, setSteps] = useState(0);
-  const parsed = useMemo(() => phase.grid.map((row) => row.split('')), [phase.id]);
-  const start = useMemo(() => {
-    for (let y = 0; y < parsed.length; y += 1) {
-      for (let x = 0; x < parsed[y].length; x += 1) {
-        if (parsed[y][x] === 'S') return { x, y };
-      }
-    }
-    return { x: 1, y: 1 };
-  }, [phase.id]);
-  const target = useMemo(() => {
-    for (let y = 0; y < parsed.length; y += 1) {
-      for (let x = 0; x < parsed[y].length; x += 1) {
-        if (parsed[y][x] === 'T') return { x, y };
-      }
-    }
-    return { x: parsed[0].length - 2, y: parsed.length - 2 };
-  }, [phase.id]);
-  const [player, setPlayer] = useState(start);
-
-  useEffect(() => {
-    setPlayer(start);
-    setSteps(0);
-  }, [phase.id]);
-
-  const move = (dx: number, dy: number) => {
-    const next = { x: player.x + dx, y: player.y + dy };
-    if (!parsed[next.y] || !parsed[next.y][next.x] || parsed[next.y][next.x] === '#') return;
-    const nextSteps = steps + 1;
-    setPlayer(next);
-    setSteps(nextSteps);
-    if (next.x === target.x && next.y === target.y) {
-      const stars = nextSteps <= phase.idealSteps ? 3 : nextSteps <= phase.idealSteps + 4 ? 2 : 1;
-      onComplete(stars, Math.max(25, 150 - nextSteps * 5));
-    }
-  };
-
-  return (
-    <div className="game-panel maze-panel">
-      <div className="maze-grid" style={{ gridTemplateColumns: `repeat(${parsed[0]?.length ?? 1}, 1fr)` }}>
-        {parsed.flatMap((row, y) => row.map((cell, x) => {
-          const isPlayer = player.x === x && player.y === y;
-          const isGoal = cell === 'T';
-          return <div key={`${x}-${y}`} className={cn('maze-cell', cell === '#' && 'is-wall', isGoal && 'is-goal', isPlayer && 'is-player')}>{isPlayer ? '🧒' : isGoal ? '🏆' : cell === '#' ? '' : '·'}</div>;
-        }))}
-      </div>
-      <div className="maze-controls">
-        <button type="button" className="circle-button" onClick={() => move(0, -1)}><ChevronLeft className="rotate-90" size={18} /></button>
-        <div className="maze-middle-controls">
-          <button type="button" className="circle-button" onClick={() => move(-1, 0)}><ChevronLeft size={18} /></button>
-          <button type="button" className="circle-button" onClick={() => move(1, 0)}><ChevronRight size={18} /></button>
-        </div>
-        <button type="button" className="circle-button" onClick={() => move(0, 1)}><ChevronRight className="rotate-90" size={18} /></button>
-      </div>
-      <div className="game-footer-note">Passos: {steps}</div>
-    </div>
-  );
-}
-
-function PuzzleGame({ phase, onComplete }: { phase: PuzzlePhase; onComplete: GameComplete }) {
-  const targetTiles = phase.scene.tiles;
-  const [tiles, setTiles] = useState(targetTiles);
-  const [selected, setSelected] = useState<number | null>(null);
-  const [swaps, setSwaps] = useState(0);
-
-  useEffect(() => {
-    const shuffled = sampleFrom(targetTiles, targetTiles.length);
-    setTiles(shuffled);
-    setSelected(null);
-    setSwaps(0);
-  }, [phase.id]);
-
-  useEffect(() => {
-    const solved = tiles.every((tile, index) => tile.id === targetTiles[index]?.id);
-    if (solved && swaps > 0) {
-      const stars = swaps <= targetTiles.length ? 3 : swaps <= targetTiles.length * 2 ? 2 : 1;
-      onComplete(stars, Math.max(20, 120 - swaps * 4));
-    }
-  }, [tiles, swaps]);
-
-  const pick = (index: number) => {
-    if (selected === null) {
-      setSelected(index);
-      return;
-    }
-    if (selected === index) {
-      setSelected(null);
-      return;
-    }
-    const clone = [...tiles];
-    [clone[selected], clone[index]] = [clone[index], clone[selected]];
-    setTiles(clone);
-    setSelected(null);
-    setSwaps((value) => value + 1);
-  };
-
-  return (
-    <div className="game-panel">
-      <div className="question-stage compact-stage">
-        <span className="question-emoji">🧩</span>
-        <h3>{phase.scene.title}</h3>
-        <p>Toque em duas peças para trocar de lugar até montar a cena.</p>
-      </div>
-      <div className="puzzle-grid" style={{ gridTemplateColumns: `repeat(${targetTiles.length > 4 ? 3 : 2}, minmax(0, 1fr))` }}>
-        {tiles.map((tile, index) => (
-          <button key={`${tile.id}-${index}`} type="button" className={cn('puzzle-tile', selected === index && 'is-selected')} onClick={() => pick(index)}>
-            <span>{tile.emoji}</span>
-            <strong>{tile.label}</strong>
-          </button>
-        ))}
-      </div>
-      <div className="game-footer-note">Trocas: {swaps}</div>
-    </div>
-  );
-}
-
-function FloatingDecor() {
-  return (
-    <div className="floating-decor" aria-hidden>
-      {['⭐', '🌈', '🧩', '🎨', '🦊', '🚀', '🐠', '🎪'].map((emoji, index) => (
-        <motion.span
-          key={`${emoji}-${index}`}
-          className={`decor-${index}`}
-          animate={{ y: [0, -18, 0], rotate: [0, 8, -8, 0] }}
-          transition={{ duration: 5 + index * 0.3, repeat: Infinity, delay: index * 0.2 }}
-        >
-          {emoji}
-        </motion.span>
-      ))}
-    </div>
-  );
-}
-
-function ToastLayer({ toasts }: { toasts: Toast[] }) {
-  return (
-    <div className="toast-stack">
       <AnimatePresence>
-        {toasts.map((toast) => (
-          <motion.div key={toast.id} className={cn('toast-card', `tone-${toast.tone}`)} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 12 }}>
-            <strong>{toast.title}</strong>
-            <p>{toast.text}</p>
+        {drawerOpen && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-40 bg-slate-950/45 xl:hidden" onClick={() => setDrawerOpen(false)}>
+            <motion.div initial={{ x: -240 }} animate={{ x: 0 }} exit={{ x: -240 }} onClick={(event) => event.stopPropagation()} className="absolute left-0 top-0 h-full w-[290px] bg-white p-4 shadow-[0_30px_90px_rgba(15,23,42,0.32)]">
+              <div className="mb-4 flex items-center justify-between">
+                <div className="text-lg font-black text-slate-950">Menu</div>
+                <button type="button" onClick={() => setDrawerOpen(false)} className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-slate-900 text-white"><X className="h-4 w-4" /></button>
+              </div>
+              <div className="grid gap-3">
+                {panelItems.map((item) => {
+                  const Icon = item.icon;
+                  return (
+                    <button key={item.key} type="button" onClick={() => { setPanel(item.key); setDrawerOpen(false); }} className={`rounded-[1.4rem] bg-[linear-gradient(135deg,var(--tw-gradient-stops))] px-4 py-4 text-left text-white shadow-lg ${item.tone}`}>
+                      <div className="flex items-center gap-3"><Icon className="h-5 w-5" /><span className="font-black">{item.label}</span></div>
+                    </button>
+                  );
+                })}
+              </div>
+            </motion.div>
           </motion.div>
-        ))}
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {selectedPhaseId && (
+          <ModalShell title={`${formatWorldName(phaseMap[selectedPhaseId].game)} • ${phaseMap[selectedPhaseId].title}`} onClose={() => setSelectedPhaseId(null)}>
+            <GameModalContent phase={phaseMap[selectedPhaseId]} onClose={() => setSelectedPhaseId(null)} onWin={completePhase} />
+          </ModalShell>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {toast && (
+          <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 24 }} className="fixed bottom-5 right-5 z-50 max-w-sm rounded-[1.5rem] bg-slate-900 px-5 py-4 text-sm font-black text-white shadow-[0_30px_90px_rgba(15,23,42,0.35)]">
+            {toast}
+          </motion.div>
+        )}
       </AnimatePresence>
     </div>
   );
-}
-
-function SectionHeading({ eyebrow, title, icon }: { eyebrow: string; title: string; icon: React.ReactNode }) {
-  return (
-    <div className="section-heading">
-      <span>{eyebrow}</span>
-      <div>
-        <div className="heading-icon">{icon}</div>
-        <h3>{title}</h3>
-      </div>
-    </div>
-  );
-}
-
-function StatBubble({ label, value, tone, compact }: { label: string; value: string; tone: 'pink' | 'blue' | 'gold'; compact?: boolean }) {
-  return (
-    <div className={cn('stat-bubble', `tone-${tone}`, compact && 'is-compact')}>
-      <small>{label}</small>
-      <strong>{value}</strong>
-    </div>
-  );
-}
-
-function ProgressBubble({ label, value, tone }: { label: string; value: string; tone: 'is-great' | 'is-good' | 'is-soft' }) {
-  return (
-    <div className={cn('progress-bubble', tone)}>
-      <small>{label}</small>
-      <strong>{value}</strong>
-    </div>
-  );
-}
-
-function StoryCard({ emoji, title, text }: { emoji: string; title: string; text: string }) {
-  return (
-    <div className="story-card">
-      <span>{emoji}</span>
-      <strong>{title}</strong>
-      <p>{text}</p>
-    </div>
-  );
-}
-
-function QuickLaunchCard({ icon: Icon, title, text, actionLabel, accent, onClick }: { icon: ElementType; title: string; text: string; actionLabel: string; accent: string; onClick: () => void }) {
-  return (
-    <motion.article className="quick-card" initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }}>
-      <div className={cn('quick-card-icon', accent)}>
-        <Icon size={20} />
-      </div>
-      <strong>{title}</strong>
-      <p>{text}</p>
-      <button type="button" className="mini-pill-button" onClick={onClick}>{actionLabel}</button>
-    </motion.article>
-  );
-}
-
-function EmptyMessage({ text }: { text: string }) {
-  return <div className="empty-state">{text}</div>;
-}
+};
 
 export default App;
