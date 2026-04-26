@@ -424,7 +424,7 @@ const MemoryGame = ({ phase, onComplete }: { phase: MemoryPhase; onComplete: (re
   const [openIds, setOpenIds] = useState<string[]>([]);
   const [moves, setMoves] = useState(0);
   const [locked, setLocked] = useState(false);
-  const columns = cards.length <= 8 ? 4 : 4;
+  const columns = cards.length <= 6 ? 3 : cards.length <= 8 ? 4 : cards.length <= 10 ? 5 : 6;
   const rows = Math.ceil(cards.length / columns);
 
   useEffect(() => {
@@ -468,41 +468,41 @@ const MemoryGame = ({ phase, onComplete }: { phase: MemoryPhase; onComplete: (re
   };
 
   return (
-    <div className="grid h-full min-h-0 gap-3 xl:grid-cols-[190px_1fr]">
-      <div className="flex min-h-0 flex-col rounded-[1.7rem] bg-[linear-gradient(180deg,#eff6ff,#fdf2f8)] p-3 shadow-inner xl:p-4">
-        <div className="text-[11px] font-black uppercase tracking-[0.22em] text-indigo-500">Memória</div>
-        <h3 className="mt-2 text-xl font-black leading-tight text-slate-950 xl:text-[1.65rem]">{phase.title}</h3>
-        <p className="mt-2 text-[13px] leading-5 text-slate-700">{phase.description}</p>
-        <div className="mt-3 grid gap-2 rounded-[1.35rem] bg-white/88 p-3 shadow-sm">
+    <div className="grid h-full min-h-0 gap-2 xl:grid-cols-[168px_1fr]">
+      <div className="flex min-h-0 flex-col rounded-[1.5rem] bg-[linear-gradient(180deg,#eff6ff,#fdf2f8)] p-2.5 shadow-inner xl:p-3">
+        <div className="text-[10px] font-black uppercase tracking-[0.22em] text-indigo-500">Memória</div>
+        <h3 className="mt-2 text-lg font-black leading-tight text-slate-950 xl:text-[1.15rem]">{phase.title}</h3>
+        <p className="mt-1.5 text-[12px] leading-5 text-slate-700">{phase.description}</p>
+        <div className="mt-2.5 grid gap-2 rounded-[1.2rem] bg-white/88 p-2.5 shadow-sm">
           <div>
-            <div className="text-[11px] font-black uppercase tracking-[0.18em] text-slate-500">Meta da fase</div>
-            <div className="mt-1 text-base font-black text-slate-950">Encontre todos os pares</div>
+            <div className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">Meta da fase</div>
+            <div className="mt-1 text-[0.95rem] font-black text-slate-950">Encontre todos os pares</div>
           </div>
           <div className="grid grid-cols-2 gap-2">
-            <div className="rounded-[1.15rem] bg-indigo-50 px-3 py-2">
-              <div className="text-[11px] font-black uppercase tracking-[0.16em] text-indigo-500">Pares</div>
-              <div className="mt-1 text-xl font-black text-slate-950">{phase.pairCount}</div>
+            <div className="rounded-[1rem] bg-indigo-50 px-2.5 py-2">
+              <div className="text-[10px] font-black uppercase tracking-[0.16em] text-indigo-500">Pares</div>
+              <div className="mt-1 text-lg font-black text-slate-950">{phase.pairCount}</div>
             </div>
-            <div className="rounded-[1.15rem] bg-fuchsia-50 px-3 py-2">
-              <div className="text-[11px] font-black uppercase tracking-[0.16em] text-fuchsia-500">Movimentos</div>
-              <div className="mt-1 text-xl font-black text-slate-950">{moves}</div>
+            <div className="rounded-[1rem] bg-fuchsia-50 px-2.5 py-2">
+              <div className="text-[10px] font-black uppercase tracking-[0.16em] text-fuchsia-500">Mov.</div>
+              <div className="mt-1 text-lg font-black text-slate-950">{moves}</div>
             </div>
           </div>
-          <div className="rounded-[1.15rem] bg-amber-50 px-3 py-2.5">
-            <div className="text-[11px] font-black uppercase tracking-[0.16em] text-amber-600">Recompensa</div>
-            <div className="mt-1 text-sm font-black text-slate-950">{phase.reward}</div>
+          <div className="rounded-[1rem] bg-amber-50 px-2.5 py-2">
+            <div className="text-[10px] font-black uppercase tracking-[0.16em] text-amber-600">Recompensa</div>
+            <div className="mt-1 text-[13px] font-black text-slate-950">{phase.reward}</div>
           </div>
         </div>
-        <div className="mt-3 rounded-[1.2rem] bg-slate-950 px-3 py-2 text-[12px] font-semibold leading-5 text-white/85 xl:mt-auto">
-          Cada partida usa apenas imagens diferentes, sem repetir desenhos no mesmo tabuleiro.
+        <div className="mt-2.5 rounded-[1rem] bg-slate-950 px-2.5 py-2 text-[11px] font-semibold leading-4 text-white/85 xl:mt-auto">
+          Apenas imagens diferentes no mesmo tabuleiro.
         </div>
       </div>
-      <div className="flex min-h-0 flex-col rounded-[1.8rem] bg-[linear-gradient(180deg,rgba(91,33,182,0.16),rgba(56,189,248,0.12))] p-3 md:p-4">
-        <div className="mb-2 flex items-center justify-between gap-3 rounded-[1.3rem] bg-white/80 px-3 py-2.5">
-          <div className="text-sm font-black uppercase tracking-[0.2em] text-indigo-500">Fase ativa</div>
-          <div className="text-sm font-semibold text-slate-700">{cards.length} cartas · {rows} linhas</div>
+      <div className="flex min-h-0 flex-col rounded-[1.6rem] bg-[linear-gradient(180deg,rgba(91,33,182,0.16),rgba(56,189,248,0.12))] p-2.5 md:p-3 overflow-hidden">
+        <div className="mb-2 flex items-center justify-between gap-3 rounded-[1.15rem] bg-white/80 px-3 py-2">
+          <div className="text-xs font-black uppercase tracking-[0.2em] text-indigo-500">Fase ativa</div>
+          <div className="text-xs font-semibold text-slate-700">{cards.length} cartas · {rows} linhas</div>
         </div>
-        <div className="grid min-h-0 flex-1 content-center gap-2.5 md:gap-3" style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))`, gridAutoRows: 'minmax(0, 1fr)' }}>
+        <div className="grid min-h-0 flex-1 content-center gap-2" style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))`, gridAutoRows: '1fr' }}>
           {cards.map((card) => {
             const visible = card.matched || card.revealed;
             return (
@@ -510,14 +510,14 @@ const MemoryGame = ({ phase, onComplete }: { phase: MemoryPhase; onComplete: (re
                 key={card.id}
                 type="button"
                 onClick={() => revealCard(card.id)}
-                className={`group aspect-[1.08/1] min-h-0 overflow-hidden rounded-[1rem] border-2 shadow-sm transition-transform duration-200 hover:scale-[1.01] ${visible ? 'border-yellow-300 bg-white' : 'border-white/40 bg-[linear-gradient(180deg,#8b5cf6,#6366f1)]'}`}
+                className={`group relative aspect-[0.86/1] min-h-0 overflow-hidden rounded-[0.95rem] border-2 shadow-sm transition-transform duration-200 hover:scale-[1.01] ${visible ? 'border-yellow-300 bg-slate-900' : 'border-white/40 bg-[linear-gradient(180deg,#8b5cf6,#6366f1)]'}`}
               >
-                <div className={`relative flex h-full w-full items-center justify-center overflow-hidden rounded-[1rem] ${visible ? 'bg-white' : 'bg-[radial-gradient(circle_at_top,#fbcfe8,transparent_40%),linear-gradient(145deg,#7c3aed,#ec4899)]'}`}>
+                <div className={`relative flex h-full w-full items-center justify-center overflow-hidden rounded-[0.85rem] ${visible ? 'bg-[radial-gradient(circle_at_top,#a78bfa,#6d28d9_60%,#312e81_100%)]' : 'bg-[radial-gradient(circle_at_top,#fbcfe8,transparent_40%),linear-gradient(145deg,#7c3aed,#ec4899)]'}`}>
                   {visible ? (
                     card.image ? (
                       <>
-                        <img src={card.image} alt={card.label} className="h-full w-full object-contain bg-white p-1.5 md:p-2" />
-                        <div className="absolute inset-x-1 bottom-1 rounded-full bg-white/92 px-1.5 py-0.5 text-center text-[9px] font-black text-slate-700 shadow-sm md:text-[10px]">
+                        <img src={card.image} alt={card.label} className="h-full w-full object-cover" />
+                        <div className="absolute inset-x-1 bottom-1 rounded-full bg-slate-950/78 px-1.5 py-0.5 text-center text-[8px] font-black text-white shadow-sm md:text-[9px]">
                           {card.label}
                         </div>
                       </>
@@ -526,8 +526,8 @@ const MemoryGame = ({ phase, onComplete }: { phase: MemoryPhase; onComplete: (re
                     )
                   ) : (
                     <div className="flex h-full w-full flex-col items-center justify-center text-white">
-                      <div className="text-xl drop-shadow md:text-2xl">✨</div>
-                      <div className="mt-1 text-[9px] font-black uppercase tracking-[0.18em] text-white/85 md:text-[10px]">Memória</div>
+                      <div className="text-lg drop-shadow md:text-xl">✨</div>
+                      <div className="mt-1 text-[8px] font-black uppercase tracking-[0.18em] text-white/85 md:text-[9px]">Memória</div>
                     </div>
                   )}
                 </div>
