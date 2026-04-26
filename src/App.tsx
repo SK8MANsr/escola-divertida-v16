@@ -96,6 +96,8 @@ const MEMORY_IMAGE_POOLS: Record<keyof typeof memoryThemePools, MemoryCardAsset[
     { label: 'Urso', image: '/memory-cards/urso.webp' },
   ],
   fruits: [
+    { label: 'Refrigerante', image: '/memory-cards/refrigerante.webp' },
+    { label: 'Guarda-sol', image: '/memory-cards/guarda_sol.webp' },
     { label: 'Sol', image: '/memory-cards/sol.webp' },
     { label: 'Lua', image: '/memory-cards/lua.webp' },
     { label: 'Estrela', image: '/memory-cards/estrela.webp' },
@@ -116,6 +118,7 @@ const MEMORY_IMAGE_POOLS: Record<keyof typeof memoryThemePools, MemoryCardAsset[
     { label: 'Cobra', image: '/memory-cards/cobra.webp' },
   ],
   space: [
+    { label: 'Saturno', image: '/memory-cards/saturno.webp' },
     { label: 'Lua', image: '/memory-cards/lua.webp' },
     { label: 'Estrela', image: '/memory-cards/estrela.webp' },
     { label: 'Sol', image: '/memory-cards/sol.webp' },
@@ -126,8 +129,12 @@ const MEMORY_IMAGE_POOLS: Record<keyof typeof memoryThemePools, MemoryCardAsset[
     { label: 'Coruja', image: '/memory-cards/coruja.webp' },
   ],
   insects: [
-    { label: 'Lagarto', image: '/memory-cards/lagarto.webp' },
+    { label: 'Borboleta', image: '/memory-cards/borboleta.webp' },
+    { label: 'Grilo', image: '/memory-cards/grilo.webp' },
+    { label: 'Mosquinha', image: '/memory-cards/mosquinha.webp' },
+    { label: 'Mosquito', image: '/memory-cards/mosquito.webp' },
     { label: 'Jacaré', image: '/memory-cards/jacare.webp' },
+    { label: 'Lagarto', image: '/memory-cards/lagarto.webp' },
     { label: 'Rato', image: '/memory-cards/rato.webp' },
     { label: 'Raposa', image: '/memory-cards/raposa.webp' },
     { label: 'Gato', image: '/memory-cards/gato.webp' },
@@ -139,6 +146,9 @@ const MEMORY_IMAGE_POOLS: Record<keyof typeof memoryThemePools, MemoryCardAsset[
     { label: 'Carro', image: '/memory-cards/carro.webp' },
     { label: 'Moto', image: '/memory-cards/moto.webp' },
     { label: 'Avião', image: '/memory-cards/aviao.webp' },
+    { label: 'Bicicleta', image: '/memory-cards/bicicleta.webp' },
+    { label: 'Trator', image: '/memory-cards/trator.webp' },
+    { label: 'Patins', image: '/memory-cards/patins.webp' },
     { label: 'Carro alegre', image: '/memory-cards/carro.webp' },
     { label: 'Moto alegre', image: '/memory-cards/moto.webp' },
     { label: 'Avião feliz', image: '/memory-cards/aviao.webp' },
@@ -146,29 +156,39 @@ const MEMORY_IMAGE_POOLS: Record<keyof typeof memoryThemePools, MemoryCardAsset[
     { label: 'Golfinho rápido', image: '/memory-cards/golfinho.webp' },
   ],
   dinos: [
-    { label: 'Lagarto', image: '/memory-cards/lagarto.webp' },
+    { label: 'Dinossauro 1', image: '/memory-cards/dinossauro01.webp' },
+    { label: 'Dinossauro 2', image: '/memory-cards/dinossauro02.webp' },
+    { label: 'Dinossauro 3', image: '/memory-cards/dinossauro03.webp' },
+    { label: 'Dinossauro 4', image: '/memory-cards/dinossauro04.webp' },
     { label: 'Jacaré', image: '/memory-cards/jacare.webp' },
+    { label: 'Lagarto', image: '/memory-cards/lagarto.webp' },
     { label: 'Cobra', image: '/memory-cards/cobra.webp' },
     { label: 'Tartaruga', image: '/memory-cards/tartaruga.webp' },
     { label: 'Elefante', image: '/memory-cards/elefante.webp' },
-    { label: 'Hipopótamo', image: '/memory-cards/hipopotamo,.webp' },
+    { label: 'Hipopótamo', image: '/memory-cards/hipopotamo.webp' },
     { label: 'Zebra', image: '/memory-cards/zebra.webp' },
     { label: 'Girafa', image: '/memory-cards/girafa.webp' },
   ],
   garden: [
+    { label: 'Casa', image: '/memory-cards/casa.webp' },
+    { label: 'Guarda-sol', image: '/memory-cards/guarda_sol.webp' },
+    { label: 'Montanha', image: '/memory-cards/montanha.webp' },
+    { label: 'Borboleta', image: '/memory-cards/borboleta.webp' },
+    { label: 'Grilo', image: '/memory-cards/grilo.webp' },
     { label: 'Arco-íris', image: '/memory-cards/arcoiris.webp' },
     { label: 'Sol', image: '/memory-cards/sol.webp' },
     { label: 'Lua', image: '/memory-cards/lua.webp' },
     { label: 'Estrela', image: '/memory-cards/estrela.webp' },
     { label: 'Galinha', image: '/memory-cards/galinha.webp' },
     { label: 'Coelho', image: '/memory-cards/coelho.webp' },
-    { label: 'Borboleta', image: '/memory-cards/gaivota.webp' },
     { label: 'Pássaro', image: '/memory-cards/coruja.webp' },
   ],
   weather: [
+    { label: 'Guarda-sol', image: '/memory-cards/guarda_sol.webp' },
+    { label: 'Montanha', image: '/memory-cards/montanha.webp' },
     { label: 'Sol', image: '/memory-cards/sol.webp' },
     { label: 'Lua', image: '/memory-cards/lua.webp' },
-    { label: 'Chuva', image: '/memory-cards/chuva.png' },
+    { label: 'Chuva', image: '/memory-cards/chuva.webp' },
     { label: 'Arco-íris', image: '/memory-cards/arcoiris.webp' },
     { label: 'Estrela', image: '/memory-cards/estrela.webp' },
     { label: 'Gaivota', image: '/memory-cards/gaivota.webp' },
@@ -176,6 +196,11 @@ const MEMORY_IMAGE_POOLS: Record<keyof typeof memoryThemePools, MemoryCardAsset[
     { label: 'Baleia', image: '/memory-cards/baleia.webp' },
   ],
   toys: [
+    { label: 'Celular', image: '/memory-cards/celular.webp' },
+    { label: 'Notebook', image: '/memory-cards/notebook.webp' },
+    { label: 'Patins', image: '/memory-cards/patins.webp' },
+    { label: 'Sapato', image: '/memory-cards/sapato.webp' },
+    { label: 'Refrigerante', image: '/memory-cards/refrigerante.webp' },
     { label: 'Menina', image: '/memory-cards/menina.webp' },
     { label: 'Menino', image: '/memory-cards/menino.webp' },
     { label: 'Vovó', image: '/memory-cards/vovo.webp' },
@@ -186,6 +211,8 @@ const MEMORY_IMAGE_POOLS: Record<keyof typeof memoryThemePools, MemoryCardAsset[
     { label: 'Moto', image: '/memory-cards/moto.webp' },
   ],
   farm: [
+    { label: 'Trator', image: '/memory-cards/trator.webp' },
+    { label: 'Casa', image: '/memory-cards/casa.webp' },
     { label: 'Galinha', image: '/memory-cards/galinha.webp' },
     { label: 'Porco', image: '/memory-cards/porco.webp' },
     { label: 'Cavalo', image: '/memory-cards/cavalo.webp' },
@@ -517,12 +544,13 @@ const MemoryGame = ({ phase, onComplete }: { phase: MemoryPhase; onComplete: (re
                 <div className={`relative flex h-full w-full items-center justify-center overflow-hidden rounded-[0.7rem] ${visible ? 'bg-[radial-gradient(circle_at_top,#a78bfa,#6d28d9_60%,#312e81_100%)]' : 'bg-[radial-gradient(circle_at_top,#fbcfe8,transparent_40%),linear-gradient(145deg,#7c3aed,#ec4899)]'}`}>
                   {visible ? (
                     card.image ? (
-                      <>
-                        <img src={card.image} alt={card.label} className="absolute inset-0 h-full w-full object-cover" />
-                        <div className="absolute inset-x-1 bottom-1 rounded-full bg-slate-950/82 px-1.5 py-0.5 text-center text-[8px] font-black text-white shadow-sm md:text-[9px]">
+                      <div className="memory-card-face relative h-full w-full overflow-hidden rounded-[0.72rem]">
+                        <div className="memory-card-face__glow" />
+                        <img src={card.image} alt={card.label} className="memory-card-face__image" />
+                        <div className="memory-card-face__label">
                           {card.label}
                         </div>
-                      </>
+                      </div>
                     ) : (
                       <span className="text-2xl md:text-3xl">{card.emoji}</span>
                     )
