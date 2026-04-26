@@ -370,7 +370,7 @@ const ModalShell = ({
         ? 'relative flex h-[100dvh] w-full flex-col overflow-hidden bg-[radial-gradient(circle_at_top,#ffffff,#eef2ff_48%,#ddd6fe_100%)]'
         : 'relative flex max-h-[92vh] w-full max-w-6xl flex-col overflow-hidden rounded-[2.3rem] border border-white/50 bg-[linear-gradient(180deg,rgba(255,255,255,0.95),rgba(243,244,255,0.96))] shadow-[0_40px_120px_rgba(15,23,42,0.35)]'}
     >
-      <div className={`flex items-center justify-between border-b border-indigo-100 bg-white/75 px-5 py-4 backdrop-blur-sm ${fullScreen ? 'md:px-8' : 'md:px-7'}`}>
+      <div className={`flex items-center justify-between border-b border-indigo-100 bg-white/75 px-4 py-3 backdrop-blur-sm ${fullScreen ? 'md:px-6' : 'md:px-7'}`}>
         <div>
           <div className="text-xs font-black uppercase tracking-[0.2em] text-indigo-500">{fullScreen ? 'Partida em tela cheia' : 'Janela interativa'}</div>
           <div className="mt-1 text-2xl font-black text-slate-950">{title}</div>
@@ -379,7 +379,7 @@ const ModalShell = ({
           <X className="h-5 w-5" />
         </button>
       </div>
-      <div className={fullScreen ? 'min-h-0 flex-1 overflow-hidden p-3 md:p-5 xl:p-6' : 'overflow-auto p-4 md:p-6'}>{children}</div>
+      <div className={fullScreen ? 'min-h-0 flex-1 overflow-hidden p-2 md:p-3 xl:p-4' : 'overflow-auto p-4 md:p-6'}>{children}</div>
     </motion.div>
   </motion.div>
 );
@@ -424,7 +424,7 @@ const MemoryGame = ({ phase, onComplete }: { phase: MemoryPhase; onComplete: (re
   const [openIds, setOpenIds] = useState<string[]>([]);
   const [moves, setMoves] = useState(0);
   const [locked, setLocked] = useState(false);
-  const columns = cards.length <= 6 ? 6 : cards.length <= 8 ? 4 : cards.length <= 10 ? 5 : 6;
+  const columns = cards.length <= 6 ? 3 : cards.length <= 8 ? 4 : cards.length <= 10 ? 5 : 6;
   const rows = Math.ceil(cards.length / columns);
 
   useEffect(() => {
@@ -468,36 +468,43 @@ const MemoryGame = ({ phase, onComplete }: { phase: MemoryPhase; onComplete: (re
   };
 
   return (
-    <div className="flex h-full min-h-0 flex-col gap-2 overflow-hidden">
-      <div className="grid gap-2 rounded-[1.35rem] bg-[linear-gradient(180deg,#eff6ff,#fdf2f8)] p-2.5 shadow-inner md:grid-cols-[minmax(0,1.2fr)_repeat(4,minmax(0,0.6fr))] md:items-center xl:p-3">
+    <div className="flex h-full min-h-0 flex-col gap-1.5 overflow-hidden">
+      <div className="grid gap-1.5 rounded-[1rem] bg-[linear-gradient(180deg,#eff6ff,#fdf2f8)] p-1.5 shadow-inner md:grid-cols-[minmax(0,1.2fr)_repeat(4,minmax(0,0.68fr))] md:items-center">
         <div className="min-w-0">
           <div className="text-[10px] font-black uppercase tracking-[0.22em] text-indigo-500">Memória</div>
-          <h3 className="mt-1 text-lg font-black leading-tight text-slate-950 xl:text-[1.15rem]">{phase.title}</h3>
-          <p className="mt-1 text-[12px] leading-5 text-slate-700">{phase.description}</p>
+          <h3 className="mt-1 text-[1.05rem] font-black leading-tight text-slate-950 md:text-[1.15rem]">{phase.title}</h3>
+          <p className="mt-0.5 text-[10px] leading-4 text-slate-700 md:text-[11px]">{phase.description}</p>
         </div>
-        <div className="rounded-[1rem] bg-white/88 px-2.5 py-2 shadow-sm">
-          <div className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-500">Meta</div>
-          <div className="mt-1 text-[13px] font-black text-slate-950">Todos os pares</div>
+        <div className="rounded-[0.85rem] bg-white/88 px-2 py-1.5 shadow-sm">
+          <div className="text-[9px] font-black uppercase tracking-[0.16em] text-slate-500">Meta</div>
+          <div className="mt-0.5 text-[11px] font-black text-slate-950">Todos os pares</div>
         </div>
-        <div className="rounded-[1rem] bg-indigo-50 px-2.5 py-2 shadow-sm">
-          <div className="text-[10px] font-black uppercase tracking-[0.16em] text-indigo-500">Pares</div>
-          <div className="mt-1 text-lg font-black text-slate-950">{phase.pairCount}</div>
+        <div className="rounded-[0.85rem] bg-indigo-50 px-2 py-1.5 shadow-sm">
+          <div className="text-[9px] font-black uppercase tracking-[0.16em] text-indigo-500">Pares</div>
+          <div className="mt-0.5 text-sm font-black text-slate-950">{phase.pairCount}</div>
         </div>
-        <div className="rounded-[1rem] bg-fuchsia-50 px-2.5 py-2 shadow-sm">
-          <div className="text-[10px] font-black uppercase tracking-[0.16em] text-fuchsia-500">Mov.</div>
-          <div className="mt-1 text-lg font-black text-slate-950">{moves}</div>
+        <div className="rounded-[0.85rem] bg-fuchsia-50 px-2 py-1.5 shadow-sm">
+          <div className="text-[9px] font-black uppercase tracking-[0.16em] text-fuchsia-500">Mov.</div>
+          <div className="mt-0.5 text-sm font-black text-slate-950">{moves}</div>
         </div>
-        <div className="rounded-[1rem] bg-amber-50 px-2.5 py-2 shadow-sm">
-          <div className="text-[10px] font-black uppercase tracking-[0.16em] text-amber-600">Recompensa</div>
-          <div className="mt-1 text-[13px] font-black text-slate-950">{phase.reward}</div>
+        <div className="rounded-[0.85rem] bg-amber-50 px-2 py-1.5 shadow-sm">
+          <div className="text-[9px] font-black uppercase tracking-[0.16em] text-amber-600">Recompensa</div>
+          <div className="mt-0.5 text-[11px] font-black text-slate-950">{phase.reward}</div>
         </div>
       </div>
-      <div className="flex min-h-0 flex-1 flex-col rounded-[1.6rem] bg-[linear-gradient(180deg,rgba(91,33,182,0.16),rgba(56,189,248,0.12))] p-2.5 md:p-3 overflow-hidden">
-        <div className="mb-2 flex items-center justify-between gap-3 rounded-[1.15rem] bg-white/80 px-3 py-2">
-          <div className="text-xs font-black uppercase tracking-[0.2em] text-indigo-500">Fase ativa</div>
-          <div className="text-xs font-semibold text-slate-700">{cards.length} cartas · {rows} linhas</div>
+      <div className="flex min-h-0 flex-1 flex-col rounded-[1.3rem] bg-[linear-gradient(180deg,rgba(91,33,182,0.16),rgba(56,189,248,0.12))] p-1.5 overflow-hidden">
+        <div className="mb-1.5 flex items-center justify-between gap-3 rounded-[0.9rem] bg-white/80 px-3 py-1.5">
+          <div className="text-[11px] font-black uppercase tracking-[0.2em] text-indigo-500">Fase ativa</div>
+          <div className="text-[11px] font-semibold text-slate-700">{cards.length} cartas · {rows} linhas</div>
         </div>
-        <div className="grid min-h-0 flex-1 content-center gap-2" style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}>
+        <div
+          className="grid min-h-0 flex-1 gap-1.5 overflow-hidden"
+          style={{
+            gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))`,
+            gridTemplateRows: `repeat(${rows}, minmax(0, 1fr))`,
+            height: '100%',
+          }}
+        >
           {cards.map((card) => {
             const visible = card.matched || card.revealed;
             return (
@@ -505,9 +512,9 @@ const MemoryGame = ({ phase, onComplete }: { phase: MemoryPhase; onComplete: (re
                 key={card.id}
                 type="button"
                 onClick={() => revealCard(card.id)}
-                className={`group relative aspect-[1.08/0.92] min-h-0 overflow-hidden rounded-[0.9rem] border-2 shadow-sm transition-transform duration-200 hover:scale-[1.01] ${visible ? 'border-yellow-300 bg-slate-900 p-0' : 'border-white/40 bg-[linear-gradient(180deg,#8b5cf6,#6366f1)]'}`}
+                className={`group relative h-full w-full min-h-0 overflow-hidden rounded-[0.8rem] border-2 shadow-sm transition-transform duration-200 hover:scale-[1.01] ${visible ? 'border-yellow-300 bg-slate-900 p-0' : 'border-white/40 bg-[linear-gradient(180deg,#8b5cf6,#6366f1)]'}`}
               >
-                <div className={`relative flex h-full w-full items-center justify-center overflow-hidden rounded-[0.8rem] ${visible ? 'bg-[radial-gradient(circle_at_top,#a78bfa,#6d28d9_60%,#312e81_100%)]' : 'bg-[radial-gradient(circle_at_top,#fbcfe8,transparent_40%),linear-gradient(145deg,#7c3aed,#ec4899)]'}`}>
+                <div className={`relative flex h-full w-full items-center justify-center overflow-hidden rounded-[0.7rem] ${visible ? 'bg-[radial-gradient(circle_at_top,#a78bfa,#6d28d9_60%,#312e81_100%)]' : 'bg-[radial-gradient(circle_at_top,#fbcfe8,transparent_40%),linear-gradient(145deg,#7c3aed,#ec4899)]'}`}>
                   {visible ? (
                     card.image ? (
                       <>
@@ -903,7 +910,7 @@ const GameModalContent = ({
   })();
 
   return (
-    <div className="relative min-h-full">
+    <div className="relative flex h-full min-h-0 flex-col overflow-hidden">
       <div className={completedResult ? 'pointer-events-none select-none blur-[3px] saturate-75' : ''}>{gameContent}</div>
       <AnimatePresence>
         {completedResult && (
@@ -1449,7 +1456,7 @@ const App = () => {
             {activeTrack.days.map((day) => (
               <div key={day.day} className="rounded-[1.4rem] bg-[linear-gradient(135deg,#eef2ff,#fff7ed)] p-3 shadow-sm">
                 <div className="text-xs font-black uppercase tracking-[0.18em] text-indigo-500">{day.day}</div>
-                <div className="mt-1 text-base font-black text-slate-950">{day.title}</div>
+                <div className="mt-0.5 text-sm font-black text-slate-950">{day.title}</div>
                 <div className="mt-1 text-sm text-slate-700">{day.goal}</div>
               </div>
             ))}
